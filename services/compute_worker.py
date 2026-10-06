@@ -17,6 +17,9 @@ from elastoplastic_fem import solve_elastoplastic_2d,staged_excavation
 from biot_solver import solve_biot_1d
 from richards_solver import solve_richards_1d
 from solver_benchmarks import suite as nonlinear_benchmark_suite
+from coupled_up_fem import solve_monolithic_up_2d
+from elastoplastic_fem import solve_adaptive_elastoplastic
+from convergence_studies import full_matrix
 
 HANDLERS={
  "monte_carlo_slope":lambda p:monte_carlo_slope(**p),
@@ -41,7 +44,10 @@ HANDLERS={
  "staged_elastoplastic":lambda p:staged_excavation(p.get("base",{}),p.get("stages",[])),
  "biot_1d":lambda p:solve_biot_1d(**p),
  "richards_1d":lambda p:solve_richards_1d(**p),
- "nonlinear_benchmarks":lambda p:nonlinear_benchmark_suite()
+ "nonlinear_benchmarks":lambda p:nonlinear_benchmark_suite(),
+ "monolithic_up_2d":lambda p:solve_monolithic_up_2d(**p),
+ "adaptive_elastoplastic":lambda p:solve_adaptive_elastoplastic(p.get("base",{}),int(p.get("cycles",2)),float(p.get("refine_fraction",.2))),
+ "convergence_matrix":lambda p:full_matrix()
 }
 
 async def run_once():

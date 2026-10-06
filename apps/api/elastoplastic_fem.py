@@ -46,9 +46,10 @@ def solve_elastoplastic_2d(width_m:float,height_m:float,nx:int,ny:int,material:d
                           load_steps:int=10,newton_max:int=30,tolerance:float=1e-6,
                           inactive_elements:list[int]|None=None,contact_penalty_kpa_m:float=1e8,
                           contact_y_m:float=0.0,adaptive_cycles:int=0,refine_fraction:float=.15,
-                          initial_displacement:list[list[float]]|None=None,initial_states:list[dict]|None=None)->dict:
+                          initial_displacement:list[list[float]]|None=None,initial_states:list[dict]|None=None,
+                          mesh_nodes_m:list[list[float]]|None=None,mesh_triangles:list[list[int]]|None=None)->dict:
     """Incremental 2D small-strain elastoplastic triangular FEM."""
-    nodes,tris=structured_tri_mesh(float(width_m),float(height_m),max(2,int(nx)),max(2,int(ny)))
+    if mesh_nodes_m is not None and mesh_triangles is not None:\n        nodes=np.asarray(mesh_nodes_m,dtype=float);tris=np.asarray(mesh_triangles,dtype=int)\n    else:\n        nodes,tris=structured_tri_mesh(float(width_m),float(height_m),max(2,int(nx)),max(2,int(ny)))
     model=make_material(material);inactive=set(inactive_elements or [])
     states=[model.initial_state() for _ in range(len(tris))]
     if initial_states:
@@ -144,3 +145,29 @@ def refine_marked_mesh(nodes:list[list[float]],triangles:list[list[int]],marked_
 def adaptive_mesh_cycle(result:dict,max_fraction:float=.2)->dict:
     plan=adaptive_refine_plan(result,max_fraction)
     return {**plan,"refined_mesh":refine_marked_mesh(result.get("nodes_m",[]),result.get("triangles",[]),plan.get("marked_elements",[]))}
+
+
+def solve_adaptive_elastoplastic(base:dict,cycles:int=2,refine_fraction:float=.2)->dict:
+    results=[];current=dict(base);prev=None
+    for cycle in range(max(1,int(cycles))):
+        if prev is not None:
+            current["mesh_nodes_m"]=prev["refined_mesh"]["nodes_m"];current["mesh_triangles"]=prev["refined_mesh"]["triangles"]
+            old_u=np.asarray(results[-1]["result"]["displacement_m"],dtype=float);old_states=results[-1]["result"]["element_states"]
+            parent=prev["refined_mesh"]["parent_element"];old_nodes=np.asarray(results[-1]["result"]["nodes_m"],dtype=float)
+            new_nodes=np.asarray(prev["refined_mesh"]["nodes_m"],dtype=float)
+            new_u=[]
+            for p in new_nodes:
+                d=np.linalg.norm(old_nodes-p,axis=1);i=int(np.argmin(d))
+                if d[i]<1e-10:new_u.append(old_u[i].tolist())
+                else:
+                    tri_idx=int(parent[min(len(parent)-1,len(new_u)%len(parent))]);tri=np.asarray(results[-1]["result"]["triangles"][tri_idx],dtype=int)
+                    new_u.append(old_u[tri].mean(axis=0).tolist())
+            current["initial_displacement"]=new_u
+            current["initial_states"]=[old_states[int(pi)] for pi in parent]
+            current["inactive_elements"]=[]
+        out=solve_elastoplastic_2d(**current)
+        plan=adaptive_mesh_cycle(out,refine_fraction)
+        results.append({"cycle":cycle+1,"result":out,"refinement":plan})
+        if not plan.get("marked_elements"):break
+        prev=plan
+    return {"cycles":results,"status":"solved","method":"automatic solve-estimate-refine-project-resolve elastoplastic FEM"}
