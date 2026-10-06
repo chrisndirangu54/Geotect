@@ -251,3 +251,45 @@ async def validation_channels(payload:dict,user:dict=Depends(current_user)):
 async def validation_shake(payload:dict,user:dict=Depends(current_user)):
     try:return shake_table_objective(payload["observed_accel"],payload["sim_accel"],payload.get("observed_pressure"),payload.get("sim_pressure"))
     except Exception as exc:raise HTTPException(422,str(exc))
+
+
+from calibration_campaigns import calibrate_liquefaction_style
+from verification_campaigns import wave_propagation_benchmark,phase_field_energy_convergence,compare_cpu_gpu
+from designsafe_client import DesignSafeClient,published_corral_path,nees_corral_path
+from model_registry import get_provider_secret
+import tempfile,os
+
+@router.post("/calibration/liquefaction-style")
+async def calibrate_liquefaction(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return calibrate_liquefaction_style(payload["strain_history"],payload["observed_ru"],payload.get("fixed"),payload.get("bounds"),int(payload.get("seed",42)),int(payload.get("maxiter",50)))
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.get("/campaigns/wave-propagation")
+async def campaign_wave(user:dict=Depends(current_user)):return wave_propagation_benchmark()
+
+@router.get("/campaigns/phase-field-energy")
+async def campaign_phase_field(user:dict=Depends(current_user)):return phase_field_energy_convergence()
+
+@router.get("/designsafe/path/published/{project_id}")
+async def designsafe_published_path(project_id:str,user:dict=Depends(current_user)):return {"path":published_corral_path(project_id)}
+
+@router.get("/designsafe/path/nees/{project_id}")
+async def designsafe_nees_path(project_id:str,user:dict=Depends(current_user)):return {"path":nees_corral_path(project_id)}
+
+@router.get("/designsafe/files")
+async def designsafe_files(system_id:str,path:str="",user:dict=Depends(current_user)):
+    token=await get_provider_secret("designsafe","tapis_token")
+    if not token:raise HTTPException(400,"DesignSafe Tapis token is not configured in the server secret vault")
+    try:return await DesignSafeClient(token).list_files(system_id,path)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/designsafe/download")
+async def designsafe_download(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    token=await get_provider_secret("designsafe","tapis_token")
+    if not token:raise HTTPException(400,"DesignSafe Tapis token is not configured in the server secret vault")
+    fd,path=tempfile.mkstemp(prefix="designsafe-",suffix=os.path.splitext(str(payload.get("path","data.bin")))[1]);os.close(fd)
+    try:return await DesignSafeClient(token).download(str(payload["system_id"]),str(payload["path"]),path)
+    except Exception as exc:
+        try:os.unlink(path)
+        except OSError:pass
+        raise HTTPException(422,str(exc))

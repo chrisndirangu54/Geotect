@@ -15,9 +15,7 @@ def main():
     import numpy as np
     for _ in range(args.repeats):
         t=time.perf_counter();n=part["count"];x=np.linspace(0,1,max(n,1));local=float(np.sum(np.sin(x)*np.cos(x)));elapsed=time.perf_counter()-t
-        if comm:
-            total=comm.allreduce(local);wall=comm.allreduce(elapsed,op=MPI.MAX)
-        else:total=local;wall=elapsed
+        wall=comm.allreduce(elapsed,op=MPI.MAX) if comm else elapsed
         samples.append(wall)
     rec={"ranks":size,"elements":args.elements,"local_elements":part["count"],"wall_seconds":samples,"best_seconds":min(samples),"throughput_elements_s":args.elements/min(samples)}
     if rank==0:

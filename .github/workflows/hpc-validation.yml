@@ -1,0 +1,26 @@
+name: GeoTect HPC Verification Campaign
+on:
+  workflow_dispatch:
+    inputs:
+      mpi_ranks:
+        description: "MPI rank matrix"
+        required: false
+        default: "2,4,8,16,32"
+      elements:
+        description: "Scaling workload elements"
+        required: false
+        default: "200000"
+jobs:
+  hpc:
+    runs-on: [self-hosted, linux, hpc]
+    steps:
+      - uses: actions/checkout@v4
+      - run: python -m pip install -r apps/api/requirements.txt
+      - run: python scripts/run_mpi_scaling_matrix.py --ranks "${{ inputs.mpi_ranks }}" --elements "${{ inputs.elements }}"
+      - run: python scripts/gpu_cpu_matrix.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hpc-verification-results
+          path: |
+            mpi-scaling-matrix.json
+            gpu-cpu-matrix.json
