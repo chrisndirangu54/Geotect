@@ -1,113 +1,101 @@
 # GeoTect
 
-**GeoTect** is an uncertainty-aware geotechnical and geoscience digital-twin platform that combines terrain, subsurface geology, geophysics, IoT telemetry, climate, infrastructure and ESG context in one engineering workspace.
+**GeoTect is a 3D, data-driven geotechnical CAD and Earth digital-twin platform.** It combines terrain, geology, boreholes, geophysics, IoT telemetry, groundwater, infrastructure, uncertainty and engineering risk in one coordinate-aware workspace.
 
-## MVP
+## What is distinctive now
 
-The first release supports a complete data path:
+GeoTect no longer treats CAD as a static drawing. The current architecture makes the spatial model the common interface for field observations, interpretations and simulations.
 
-1. ingest terrain / DEM metadata and site context;
-2. ingest boreholes and geophysical observations;
-3. register IoT sensors and telemetry;
-4. fuse observations into a site digital-twin snapshot;
-5. compute transparent risk indicators with confidence;
-6. visualize the resulting terrain, subsurface layers, sensors and risk state in a React engineering dashboard.
+### Operational in this repository
 
-> GeoTect deliberately separates **measured**, **interpreted** and **predicted** information. Inferred geology and risk estimates always carry provenance and confidence rather than being presented as ground truth.
+- **Cesium WebGL 3D CAD workspace** with coordinate-aware boreholes, sensors, geological/geophysical bodies and infrastructure.
+- **Actual GeoTIFF DEM → triangulated 3D mesh** upload path. The backend reprojects raster cells to WGS84 and the browser renders the resulting terrain geometry.
+- **LAS/LAZ and SEG-Y readers** for scientific-file inspection.
+- **PostGIS + TimescaleDB** Docker persistence foundation.
+- **MQTT + LoRaWAN ingestion worker** and normalization.
+- **Modbus TCP + OPC-UA polling worker** for configured field devices.
+- **ERT/seismic/geophysics spatial contract** with provenance and confidence.
+- **Uncertainty estimation** with an IDW baseline that exposes confidence/support rather than hiding interpolation uncertainty.
+- **Groundwater Darcy-flow screening**.
+- **InSAR displacement trend/acceleration analysis**.
+- **Infrastructure dependency/failure propagation**.
+- **Limit-equilibrium-style slope screening**.
+- **FEM adapter contract** that refuses to fabricate results until a validated solver is configured.
+- **deck.gl analytical layer builders** for dense sensor/infrastructure overlays and future synchronized section/map views.
 
-## Architecture
+## Scientific information states
+
+Every spatial object is one of:
 
 ```text
-apps/
-  web/                  React + TypeScript engineering workspace
-  api/                  FastAPI service
-packages/
-  geotect_core/         shared scientific/domain models
-services/
-  ingestion/            instrument and file ingestion adapters
-  risk/                 transparent baseline risk models
-examples/
-  site_demo.json        representative site payload
+MEASURED    -> direct field/instrument observation
+INTERPRETED -> geological/geotechnical interpretation
+PREDICTED   -> interpolation, forecast or simulation
 ```
 
-## Core data domains
-
-- Terrain: elevation, slope, aspect, DEM/DSM/LiDAR metadata
-- Geology: lithology, structures, weathering, stratigraphy
-- Geotechnical: boreholes, SPT/CPT, density, porosity, cohesion, friction angle
-- Geophysics: ERT, seismic, GPR, gravity, magnetics and IP
-- Hydrogeology: groundwater, pore pressure, permeability and drainage
-- IoT: piezometers, inclinometers, GNSS, strain, seepage and weather stations
-- Climate: rainfall, temperature, evaporation and wind
-- Infrastructure: roads, foundations, dams, tunnels, pits and pipelines
-- ESG: water, land disturbance, biodiversity, settlements and compliance context
-- Risk: slope, flood, subsidence, seismic, erosion and infrastructure-failure indicators
+Confidence and provenance remain attached throughout the pipeline. Predicted geology never silently becomes measured geology.
 
 ## Quick start
-
-### API
-
-```bash
-cd apps/api
-python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\\Scripts\\activate
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-Open http://localhost:8000/docs.
-
-### Web
-
-```bash
-cd apps/web
-npm install
-npm run dev
-```
-
-The UI expects the API at `http://localhost:8000` by default. Override with `VITE_API_URL`.
-
-### Docker
 
 ```bash
 docker compose up --build
 ```
 
-## API surface
+- Web CAD: http://localhost:5173
+- API/OpenAPI: http://localhost:8000/docs
+- PostgreSQL/PostGIS/TimescaleDB: localhost:5432
 
-- `GET /health`
-- `GET /api/v1/capabilities`
-- `POST /api/v1/sites/analyze`
-- `POST /api/v1/geophysics/interpret`
-- `POST /api/v1/telemetry/evaluate`
-- `POST /api/v1/risk/slope`
+Optional MQTT worker:
 
-The initial numerical models are intentionally transparent screening models, **not substitutes for signed geotechnical design**. Future solver adapters can integrate PLAXIS, OpenSees, FEniCSx, GeoStudio-compatible workflows or other validated numerical engines without changing the core data contract.
+```bash
+docker compose --profile telemetry up --build
+```
 
-## Scientific design principles
+Optional industrial worker (configure device environment first):
 
-1. **Provenance first** — every observation records source, time and quality.
-2. **Uncertainty is data** — confidence is stored and propagated.
-3. **Time matters** — telemetry and digital-twin state are temporal, not static.
-4. **Open adapters** — instruments connect through normalized interfaces (MQTT, LoRaWAN, Modbus, OPC-UA, HTTP).
-5. **Physics before decoration** — visual layers must map to defensible measurements, interpretations or calculations.
-6. **Human-in-the-loop** — automated geological interpretation is reviewable and cannot silently become "verified geology".
+```bash
+docker compose --profile industrial up --build
+```
 
-## Roadmap
+## Load a real DEM
 
-- CesiumJS / deck.gl 3D terrain and subsurface volumes
-- GeoTIFF, LAS/LAZ, GeoJSON, SEG-Y and common borehole formats
-- PostGIS + TimescaleDB persistence
-- MQTT/LoRaWAN/Modbus/OPC-UA gateways
-- kriging / Gaussian-process uncertainty volumes
-- rainfall-infiltration and pore-pressure coupling
-- limit-equilibrium and FEM slope adapters
-- InSAR deformation ingestion
-- groundwater flow
-- 4D construction/mining history
-- ESG impact accounting and auditable compliance trails
-- role-based project collaboration and engineering approvals
+Open the web application and choose **Load GeoTIFF DEM**. GeoTect uploads the raster to the API, builds a bounded triangulated mesh, transforms it to EPSG:4326, and renders the actual terrain in Cesium. Large production rasters should later use tiled/streamed terrain instead of browser-scale meshes.
 
-## Status
+## API groups
 
-GeoTect is currently an early engineering MVP scaffold. Interfaces marked as models or screening calculations should be validated against field data and jurisdiction-specific engineering standards before safety-critical use.
+```text
+/api/v1/workspace/*
+/api/v1/datasets/*
+/api/v1/geophysics/*
+/api/v1/iot/*
+/api/v1/telemetry/*
+/api/v1/uncertainty/*
+/api/v1/groundwater/*
+/api/v1/insar/*
+/api/v1/infrastructure/*
+/api/v1/simulation/*
+/api/v1/risk/*
+```
+
+## Repository map
+
+```text
+apps/
+  web/            React + TypeScript + Cesium + deck.gl
+  api/            FastAPI scientific/spatial API
+services/
+  telemetry_worker.py
+  industrial_worker.py
+infrastructure/
+  db/init.sql     PostGIS + TimescaleDB
+docs/
+  architecture.md
+  data-pipeline.md
+examples/
+```
+
+## What is deliberately not faked
+
+GeoTect is not yet claiming full production inversion, FEM, groundwater PDE solving, point-cloud tiling, SEG-Y voxel rendering or automated engineering sign-off. Interfaces are in place where appropriate, but safety-critical numerical capability should be connected to validated solvers and tested against benchmark/field datasets.
+
+The next engineering depth should focus on: tiled DEM/LAS streaming, ERT/seismic inversion-volume ingestion, borehole fence/section editing, snapping/drafting tools, geological solid construction, kriging/Gaussian-process uncertainty, FEM solver execution, and persisted project/version/review workflows.
