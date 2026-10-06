@@ -1,0 +1,11 @@
+{
+  "site_id": "demo-slope-001",
+  "terrain": {"mean_elevation_m": 1680, "slope_deg": 32, "aspect_deg": 205, "rainfall_24h_mm": 80},
+  "materials": [
+    {"name": "Lateritic soil", "material_type": "soil", "porosity": 0.38, "friction_angle_deg": 28, "cohesion_kpa": 8, "unit_weight_kn_m3": 18, "confidence": 0.82},
+    {"name": "Weathered basalt", "material_type": "rock", "porosity": 0.12, "friction_angle_deg": 34, "cohesion_kpa": 24, "unit_weight_kn_m3": 22, "confidence": 0.68}
+  ],
+  "sensors": [],
+  "infrastructure_type": "road_cut",
+  "esg_sensitivity": 0.6
+}
