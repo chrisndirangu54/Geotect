@@ -132,6 +132,16 @@ Desktop integrations use one-time bridge tokens. Cloud credentials remain encryp
 
 See `docs/vendor-integrations.md`.
 
+## Open standards and governance
+
+GeoTect now supports geotechnical/BIM/Earth-observation interoperability through DIGGS 3.0, AGS crosswalks, IFC 4.3 geotechnical manifests, IDS validation, STAC, SensorThings, BCF/openCDE, GeoParquet, Zarr, COPC and E57 exchange contracts.
+
+The engineering layer also includes constitutive-model screening, hydro-mechanical coupling, transient/unsaturated groundwater, consolidation, seismic Newmark response, rock mechanics, tailings and slope-radar analytics, evidence-aware engineering agents, project risk/assumption registers and immutable released revisions.
+
+The installable Field console supports offline records, GNSS, speech notes, camera/media, Bluetooth discovery, sample chain of custody and instrument calibration.
+
+See `docs/open-standards-and-governance.md`.
+
 ## Security
 
 The bootstrap super administrator is configured through:

@@ -1,16 +1,16 @@
 import {useEffect,useMemo,useState} from "react";
-import {KeyRound,Settings,BrainCircuit,Users,ShieldCheck,ScrollText,RefreshCw,Trash2,Save,LogIn,LogOut,Plug} from "lucide-react";
+import {KeyRound,Settings,BrainCircuit,Users,ShieldCheck,ScrollText,RefreshCw,Trash2,Save,LogIn,LogOut,Plug,Building2} from "lucide-react";
 import {configured,loginGoogle,logout,watchAuth} from "./firebase";
 import {adminFetch} from "./adminApi";
 
-type Tab="overview"|"models"|"keys"|"settings"|"users"|"integrations"|"audit";
+type Tab="overview"|"models"|"keys"|"settings"|"users"|"integrations"|"enterprise"|"audit";
 export default function AdminDashboard({api,onClose}:{api:string;onClose:()=>void}){
  const [authUser,setAuthUser]=useState<any>(null);const [me,setMe]=useState<any>(null);const [tab,setTab]=useState<Tab>("overview");
  const [data,setData]=useState<any>(null);const [error,setError]=useState("");const [busy,setBusy]=useState(false);
 
  useEffect(()=>watchAuth(u=>{setAuthUser(u);setMe(null);setData(null);if(u)adminFetch(api,"/api/v1/admin/me").then(setMe).catch(e=>setError(e.message))}),[api]);
  async function load(t:Tab=tab){setBusy(true);setError("");try{
-   const path=t==="overview"?"/api/v1/admin/overview":t==="models"?"/api/v1/admin/models":t==="keys"?"/api/v1/admin/secrets":t==="settings"?"/api/v1/admin/settings":t==="users"?"/api/v1/admin/users":t==="integrations"?"/api/v1/integrations/catalog":"/api/v1/admin/audit?limit=100";
+   const path=t==="overview"?"/api/v1/admin/overview":t==="models"?"/api/v1/admin/models":t==="keys"?"/api/v1/admin/secrets":t==="settings"?"/api/v1/admin/settings":t==="users"?"/api/v1/admin/users":t==="integrations"?"/api/v1/integrations/catalog":t==="enterprise"?"/api/v1/platform/organizations":"/api/v1/admin/audit?limit=100";
    setData(await adminFetch(api,path));
  }catch(e:any){setError(e.message)}finally{setBusy(false)}}
  useEffect(()=>{if(me?.role==="super_admin")load(tab)},[tab,me?.role]);
@@ -24,7 +24,7 @@ export default function AdminDashboard({api,onClose}:{api:string;onClose:()=>voi
   <div className="adminLayout">
    <aside className="adminNav">
     <div className="adminIdentity"><ShieldCheck/><div><b>Super Admin</b><small>{me.email}</small></div></div>
-    {([["overview",ShieldCheck,"Overview"],["models",BrainCircuit,"Models"],["keys",KeyRound,"API Keys"],["settings",Settings,"Settings"],["users",Users,"Users & Roles"],["integrations",Plug,"Integrations"],["audit",ScrollText,"Audit Log"]] as any[]).map(([id,Icon,label])=><button key={id} className={tab===id?"activeAdminTab":""} onClick={()=>setTab(id)}><Icon/>{label}</button>)}
+    {([["overview",ShieldCheck,"Overview"],["models",BrainCircuit,"Models"],["keys",KeyRound,"API Keys"],["settings",Settings,"Settings"],["users",Users,"Users & Roles"],["integrations",Plug,"Integrations"],["enterprise",Building2,"Enterprise"],["audit",ScrollText,"Audit Log"]] as any[]).map(([id,Icon,label])=><button key={id} className={tab===id?"activeAdminTab":""} onClick={()=>setTab(id)}><Icon/>{label}</button>)}
     <button className="adminSignout" onClick={logout}><LogOut/>Sign out</button>
    </aside>
    <section className="adminContent">
@@ -43,6 +43,7 @@ function AdminTab({api,tab,data,refresh}:{api:string;tab:Tab;data:any;refresh:()
  if(tab==="settings")return <SettingsTab api={api} rows={data||[]} refresh={refresh}/>;
  if(tab==="users")return <UsersTab api={api} rows={data||[]} refresh={refresh}/>;
  if(tab==="integrations")return <IntegrationsTab api={api} catalog={data||{}}/>;
+ if(tab==="enterprise")return <EnterpriseTab api={api} orgs={data||[]}/>;
  return <Audit rows={data||[]}/>;
 }
 function Overview({data}:{data:any}){if(!data)return null;return <><div className="adminCards">{Object.entries(data.counts||{}).map(([k,v])=><div className="adminCard" key={k}><span>{k.replace(/_/g," ")}</span><b>{String(v)}</b></div>)}</div><div className="securityBox"><h3>Security posture</h3><p><b>Role:</b> {data.role}</p><p><b>Encrypted secrets:</b> {data.security?.secrets_encrypted?"Enabled":"Disabled"}</p><p><b>Bootstrap super admin:</b> {data.security?.bootstrap_super_admin}</p><p><b>Permissions:</b> {data.permissions?.join(", ")}</p></div></>}
@@ -82,5 +83,25 @@ function IntegrationsTab({api,catalog}:{api:string;catalog:any}){
   {created?.bridge_token&&<div className="securityBox"><h3>Bridge token — copy now</h3><p>This token is shown once and only its hash is retained.</p><code>{created.bridge_token}</code></div>}
   <div className="moduleGrid">{Object.entries(catalog).map(([k,v]:any)=><div className="moduleCard" key={k}><Plug/><b>{k.replace(/_/g," ")}</b><small>{v.mode} · {v.auth?.join(", ")}</small><p>{v.capabilities?.join(", ")}</p></div>)}</div>
   <h3>Configured connections</h3><DataTable rows={rows} columns={["provider","name","mode","base_url","enabled","updated_at"]}/>
+ </div>
+}
+
+function EnterpriseTab({api,orgs}:{api:string;orgs:any[]}){
+ const [orgId,setOrgId]=useState(orgs[0]?.id||"");const [policy,setPolicy]=useState<any>({sso_mode:"firebase",scim_enabled:false,data_residency:"default",cmek_provider:"",cmek_key_ref:"",rate_limits:{requests_per_minute:600},retention:{days:3650}});
+ useEffect(()=>{if(orgId)adminFetch(api,"/api/v1/operations/enterprise/"+orgId+"/policy").then(setPolicy)},[api,orgId]);
+ async function save(){await adminFetch(api,"/api/v1/operations/enterprise/"+orgId+"/policy",{method:"PUT",body:JSON.stringify(policy)})}
+ return <div>
+  <div className="securityBox"><h3>Enterprise controls</h3><p>Configure SSO/SAML metadata, SCIM provisioning, regional data residency, customer-managed key references, rate limits and retention policy.</p></div>
+  <div className="adminForm">
+   <select value={orgId} onChange={e=>setOrgId(e.target.value)}>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>
+   <select value={policy.sso_mode||"firebase"} onChange={e=>setPolicy({...policy,sso_mode:e.target.value})}><option>firebase</option><option>saml</option><option>oidc</option></select>
+   <input value={policy.data_residency||""} onChange={e=>setPolicy({...policy,data_residency:e.target.value})} placeholder="Data residency"/>
+   <button onClick={save} disabled={!orgId}><Save/>Save policy</button>
+   <input value={policy.cmek_provider||""} onChange={e=>setPolicy({...policy,cmek_provider:e.target.value})} placeholder="CMEK provider"/>
+   <input value={policy.cmek_key_ref||""} onChange={e=>setPolicy({...policy,cmek_key_ref:e.target.value})} placeholder="CMEK key reference"/>
+   <textarea value={JSON.stringify(policy.saml_metadata||{},null,2)} onChange={e=>{try{setPolicy({...policy,saml_metadata:JSON.parse(e.target.value)})}catch{}}}/>
+   <textarea value={JSON.stringify(policy.rate_limits||{},null,2)} onChange={e=>{try{setPolicy({...policy,rate_limits:JSON.parse(e.target.value)})}catch{}}}/>
+  </div>
+  <label><input type="checkbox" checked={!!policy.scim_enabled} onChange={e=>setPolicy({...policy,scim_enabled:e.target.checked})}/> Enable SCIM provisioning</label>
  </div>
 }

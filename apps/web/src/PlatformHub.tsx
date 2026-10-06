@@ -3,7 +3,7 @@ import {BrainCircuit,Building2,ShieldAlert,Pickaxe,HardHat,Route,Leaf,Activity,M
 import {adminFetch} from "./adminApi";
 import {configured,loginGoogle,watchAuth} from "./firebase";
 
-type Tab="copilot"|"design"|"investigation"|"modules"|"timeline"|"jobs"|"plugins";
+type Tab="copilot"|"design"|"advanced"|"standards"|"investigation"|"modules"|"timeline"|"jobs"|"plugins";
 const moduleIcons:any={tailings_dam:ShieldAlert,highway_cut:Route,building_foundation:Building2,open_pit:Pickaxe,underground_mine:Pickaxe,tunnel:HardHat,corridor:Route,esg:Leaf,emergency:ShieldAlert};
 
 export default function PlatformHub({api,onClose}:{api:string;onClose:()=>void}){
@@ -17,12 +17,14 @@ export default function PlatformHub({api,onClose}:{api:string;onClose:()=>void})
   <div className="platformLayout">
    <aside className="platformNav">
     <div className="platformBrand"><Activity/><div><b>GeoTect Platform</b><small>Ground Engineering OS</small></div></div>
-    {([["copilot",BrainCircuit,"AI CAD Copilot"],["design",HardHat,"Design Lab"],["investigation",Microscope,"Investigation"],["modules",Building2,"Domain Modules"],["timeline",Clock3,"4D Twin"],["jobs",Play,"Compute Jobs"],["plugins",Plug,"Plugins"]] as any[]).map(([id,I,l])=><button key={id} className={tab===id?"activePlatformTab":""} onClick={()=>setTab(id)}><I/>{l}</button>)}
+    {([["copilot",BrainCircuit,"AI CAD Copilot"],["design",HardHat,"Design Lab"],["advanced",Activity,"Advanced Engineering"],["standards",ShieldAlert,"Standards & Governance"],["investigation",Microscope,"Investigation"],["modules",Building2,"Domain Modules"],["timeline",Clock3,"4D Twin"],["jobs",Play,"Compute Jobs"],["plugins",Plug,"Plugins"]] as any[]).map(([id,I,l])=><button key={id} className={tab===id?"activePlatformTab":""} onClick={()=>setTab(id)}><I/>{l}</button>)}
     <div className="orgPicker"><span>Organization</span>{orgs.length?<select value={orgId} onChange={e=>setOrgId(e.target.value)}>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>:<button onClick={createOrg}>Create workspace</button>}</div>
    </aside>
    <main className="platformContent">
     {tab==="copilot"&&<Copilot api={api}/>}
-    {tab==="design"&&<DesignLab api={api}/>}
+    {tab==="design"&&<DesignLab api={api}/>} 
+    {tab==="advanced"&&<AdvancedEngineering api={api}/>} 
+    {tab==="standards"&&<Standards api={api}/>}
     {tab==="investigation"&&<Investigation api={api}/>}
     {tab==="modules"&&<Modules api={api}/>}
     {tab==="timeline"&&<Timeline api={api} orgId={orgId}/>}
@@ -67,3 +69,19 @@ function Panel({title,sub,children}:{title:string;sub:string;children:any}){retu
 function Json({x}:{x:any}){return x?<pre className="platformOutput">{JSON.stringify(x,null,2)}</pre>:null}
 function Gate({title,body,children}:{title:string;body:string;children?:any}){return <div className="platformGate"><Activity/><h2>{title}</h2><p>{body}</p>{children}</div>}
 function Shell({children,onClose}:{children:any;onClose:()=>void}){return <div className="platformOverlay"><div className="platformWindow"><button className="platformClose" onClick={onClose}><X/></button>{children}</div></div>}
+
+function AdvancedEngineering({api}:{api:string}){const [tool,setTool]=useState("mohr_coulomb"),[out,setOut]=useState<any>(null);const samples:any={
+ mohr_coulomb:{normal_stress_kpa:100,cohesion_kpa:5,friction_deg:30,pore_pressure_kpa:20},
+ transient_groundwater:{head0:[[100,98,96],[100,98,96],[100,98,96]],k_m_s:1e-5,storage:.001,dx_m:10,dy_m:10,dt_s:100,steps:5,left_head:100,right_head:95},
+ consolidation:{settlement_final_mm:120,cv_m2_s:1e-6,drainage_path_m:2,times_s:[0,86400,604800]},
+ newmark:{accel_g:[0,.1,.35,.5,.2,0],dt_s:.02,yield_accel_g:.2},
+ tailings_freeboard:{crest_elev_m:105,pond_elev_m:101,wave_runup_m:.5,rain_allowance_m:.5},
+ inverse_velocity:{times:[0,1,2,3],velocities:[1,1.4,2.2,5]}
+};const [raw,setRaw]=useState(JSON.stringify(samples.mohr_coulomb,null,2));useEffect(()=>setRaw(JSON.stringify(samples[tool]||{},null,2)),[tool]);
+ async function run(){setOut(await adminFetch(api,"/api/v1/standards/engineering/"+tool,{method:"POST",body:JSON.stringify(JSON.parse(raw))}))}
+ return <Panel title="Advanced Engineering" sub="Constitutive, coupled-flow, consolidation, seismic, rock-mass, tunnel and tailings baselines with explicit method metadata."><select value={tool} onChange={e=>setTool(e.target.value)}>{Object.keys(samples).map(x=><option key={x}>{x}</option>)}</select><textarea className="platformCode" value={raw} onChange={e=>setRaw(e.target.value)}/><button onClick={run}><Play/>Run</button><Json x={out}/></Panel>}
+
+function Standards({api}:{api:string}){const [out,setOut]=useState<any>(null);const [action,setAction]=useState("diggs/export");
+ const payloads:any={"diggs/export":{project:{name:"GeoTect Project"},boreholes:[]},"ifc43/manifest":{project:{name:"GeoTect"},boreholes:[{id:"BH1"}],strata:[]},"stac/item":{id:"survey-1",bbox:[36,-2,37,-1],geometry:{type:"Point",coordinates:[36.5,-1.5]},assets:{dem:{href:"s3://bucket/dem.tif"}}},"sensorthings/observation":{sensor_id:"PZ-1",datastream_id:"pore-pressure",result:42.1,unit:"kPa"}};
+ async function run(){setOut(await adminFetch(api,"/api/v1/standards/"+action,{method:"POST",body:JSON.stringify(payloads[action])}))}
+ return <Panel title="Open Standards & Governance" sub="DIGGS, IFC 4.3 geotechnics, IDS validation, STAC, SensorThings, BCF/openCDE and immutable project releases."><div className="inlineControls"><select value={action} onChange={e=>setAction(e.target.value)}>{Object.keys(payloads).map(x=><option key={x}>{x}</option>)}</select><button onClick={run}><Play/>Generate</button></div><Json x={out}/></Panel>}

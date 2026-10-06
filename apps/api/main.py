@@ -8,7 +8,10 @@ from cad_routes import router as cad_router
 from admin_routes import router as admin_router
 from platform_routes import router as platform_router
 from integration_routes import router as integration_router
+from standards_routes import router as standards_router
+from operations_routes import router as operations_router
 from db import init_db
+from rate_limit import RateLimitMiddleware
 
 @asynccontextmanager
 async def lifespan(app:FastAPI):
@@ -16,12 +19,13 @@ async def lifespan(app:FastAPI):
     except Exception as exc: print(f"GeoTect DB initialization warning: {exc}")
     yield
 
-app=FastAPI(title="GeoTect API",version="0.4.0",description="Computational 3D geotechnical CAD, Earth digital twin and secure administration API.",lifespan=lifespan)
+app=FastAPI(title="GeoTect API",version="0.6.0",description="Computational 3D geotechnical CAD, Earth digital twin and secure administration API.",lifespan=lifespan)
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_credentials=False,allow_methods=["*"],allow_headers=["*"])
-app.include_router(scientific_router);app.include_router(cad_router);app.include_router(admin_router);app.include_router(platform_router);app.include_router(integration_router)
+app.include_router(scientific_router);app.include_router(cad_router);app.include_router(admin_router);app.include_router(platform_router);app.include_router(integration_router);app.include_router(standards_router);app.include_router(operations_router)
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"geotect-api","version":"0.4.0"}
+def health(): return {"status":"ok","service":"geotect-api","version":"0.6.0"}
 
 @app.get("/api/v1/capabilities")
 def capabilities():
@@ -31,7 +35,11 @@ def capabilities():
  "persistence":["postgis","timescaledb","project_versions"],
  "admin":["firebase_verified_auth","rbac","encrypted_api_keys","model_registry","system_settings","audit_log"],
  "platform":["organizations","asset_health","workflows","4d_events","compute_jobs","plugins","copilot","investigation_optimization","design_tools","reports","interop","emergency","esg","mine","construction","corridor"],
- "integrations":["esri_arcgis","seequent_evo","archicad_bridge","micromine_bridge","micromine_nexus","ogc_api_features","geoserver","qgis"]}
+ "integrations":["esri_arcgis","seequent_evo","archicad_bridge","micromine_bridge","micromine_nexus","autodesk_aps","civil3d","revit","bentley_itwin","openground","trimble_connect","datamine_studio","deswik","maptek","plaxis","geostudio","modflow_flopy","ogc_api_features","geoserver","qgis"],
+ "standards":["diggs_3","ags_crosswalk","ifc_4_3_geotechnical","ids","stac","sensorthings","bcf","opencde","geoparquet","zarr","copc","e57"],
+ "advanced_engineering":["mohr_coulomb","hoek_brown","hardening_soil","cam_clay","hydro_mechanical","transient_groundwater","unsaturated","consolidation","newmark","rock_mechanics","tailings","inverse_velocity","pile_groups"],
+ "field":["pwa_offline","gnss","speech_notes","camera_media","bluetooth","samples","chain_of_custody","calibration"],
+ "enterprise":["saml_config","oidc","scim","data_residency","cmek_refs","rate_limits","retention","marketplace"]}
 
 @app.post("/api/v1/sites/analyze")
 def site_analyze(request:SiteAnalysisRequest): return analyze_site(request)

@@ -1,0 +1,9 @@
+{
+  "name":"GeoTect Field",
+  "short_name":"GeoTect",
+  "start_url":"/",
+  "display":"standalone",
+  "background_color":"#08100d",
+  "theme_color":"#08100d",
+  "icons":[]
+}

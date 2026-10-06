@@ -10,6 +10,8 @@ from investigation import recommend_locations
 from groundwater_pde import solve_steady_groundwater
 from ert_inversion import invert_ert
 from seismic_volume import reconstruct_volume
+from advanced_engineering import transient_diffusion,newmark_sliding,consolidation_time,inverse_velocity_failure,coupled_hydro_mechanical
+from calibration import calibrate_scalar
 
 HANDLERS={
  "monte_carlo_slope":lambda p:monte_carlo_slope(**p),
@@ -21,7 +23,13 @@ HANDLERS={
  "investigation_recommend":lambda p:recommend_locations(p.get("candidates",[]),p.get("observations",[]),int(p.get("count",5)),float(p.get("min_spacing_m",50))),
  "groundwater_pde":lambda p:solve_steady_groundwater(**p),
  "ert_inversion":lambda p:invert_ert(**p),
- "seismic_reconstruction":lambda p:reconstruct_volume(**p)
+ "seismic_reconstruction":lambda p:reconstruct_volume(**p),
+ "transient_groundwater":lambda p:transient_diffusion(**p),
+ "newmark_sliding":lambda p:newmark_sliding(**p),
+ "consolidation":lambda p:consolidation_time(**p),
+ "inverse_velocity":lambda p:inverse_velocity_failure(**p),
+ "hydro_mechanical":lambda p:coupled_hydro_mechanical(**p),
+ "calibrate_scalar":lambda p:calibrate_scalar(**p)
 }
 
 async def run_once():

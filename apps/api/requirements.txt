@@ -19,3 +19,5 @@ firebase-admin>=6.6
 cryptography>=44.0
 
 flopy>=3.9
+pyarrow>=18.0
+zarr>=3.0
