@@ -1,39 +1,109 @@
 # GeoTect
 
-**GeoTect is a 3D, data-driven geotechnical CAD and Earth digital-twin platform.** It combines terrain, geology, boreholes, geophysics, IoT telemetry, groundwater, infrastructure, uncertainty and engineering risk in one coordinate-aware workspace.
+**GeoTect is a computational 3D geotechnical CAD and Earth digital-twin platform.** It combines terrain, boreholes, geology, geophysics, IoT telemetry, groundwater, infrastructure, uncertainty and numerical engineering models in one editable, coordinate-aware workspace.
 
-## What is distinctive now
+## Implemented capabilities
 
-GeoTect no longer treats CAD as a static drawing. The current architecture makes the spatial model the common interface for field observations, interpretations and simulations.
+### 3D geotechnical CAD
 
-### Operational in this repository
+The React/Cesium workspace is now an authoring environment, not only a viewer.
 
-- **Cesium WebGL 3D CAD workspace** with coordinate-aware boreholes, sensors, geological/geophysical bodies and infrastructure.
-- **Actual GeoTIFF DEM → triangulated 3D mesh** upload path. The backend reprojects raster cells to WGS84 and the browser renders the resulting terrain geometry.
-- **LAS/LAZ and SEG-Y readers** for scientific-file inspection.
-- **PostGIS + TimescaleDB** Docker persistence foundation.
-- **MQTT + LoRaWAN ingestion worker** and normalization.
-- **Modbus TCP + OPC-UA polling worker** for configured field devices.
-- **ERT/seismic/geophysics spatial contract** with provenance and confidence.
-- **Uncertainty estimation** with an IDW baseline that exposes confidence/support rather than hiding interpolation uncertainty.
-- **Groundwater Darcy-flow screening**.
-- **InSAR displacement trend/acceleration analysis**.
-- **Infrastructure dependency/failure propagation**.
-- **Limit-equilibrium-style slope screening**.
-- **FEM adapter contract** that refuses to fabricate results until a validated solver is configured.
-- **deck.gl analytical layer builders** for dense sensor/infrastructure overlays and future synchronized section/map views.
+- draw **faults, strata, boreholes, roads, foundations, tunnels, excavations and section traces**;
+- scene/depth-based coordinate picking to snap authored vertices onto visible terrain/geometry;
+- polygon extrusion for strata, foundations and excavations;
+- 3D distance measurement;
+- select authored features and edit name, information state, confidence, elevation and extrusion depth;
+- delete features;
+- undo/redo history;
+- clipping-plane toggle;
+- geological fence/section generation from an authored section trace;
+- borehole correlation suggestions;
+- project save/version history in PostgreSQL;
+- latest project version restored in the web client.
 
-## Scientific information states
+### Terrain and point clouds
 
-Every spatial object is one of:
+- GeoTIFF/DEM ingestion with CRS transformation through Rasterio.
+- GeoTIFF -> bounded triangulated 3D mesh -> Cesium WebGL rendering.
+- LAS/LAZ parsing.
+- Automatic spatial LAS/LAZ tiling into compressed point tiles plus `tileset.json`, downloadable as a ZIP.
+- deck.gl analytical layer builders for dense overlays.
+
+### Geophysics
+
+- ERT regularized log-resistivity inversion from a supplied survey sensitivity/Jacobian matrix.
+- Seismic trace reconstruction into an x-y-depth amplitude volume using IDW interpolation and time-depth conversion.
+- SEG-Y inspection through ObsPy.
+- Spatial contracts for ERT, seismic, GPR, IP, gravity and magnetics.
+- Geological/geophysical bodies carry information state, confidence and provenance rather than being treated as unquestioned ground truth.
+
+### Geological modelling
+
+- closed triangulated geological prism/stratum generation;
+- editable/extruded strata in the CAD workspace;
+- borehole fence views and correlation suggestions;
+- separate **measured**, **interpreted** and **predicted** states.
+
+### Groundwater
+
+- Darcy-flow screening;
+- heterogeneous 2D steady-state groundwater PDE solution using finite differences for `div(K grad h)=0`;
+- hydraulic head and Darcy flux fields returned to the digital-twin layer.
+
+### Numerical engineering
+
+- slope/limit-equilibrium-style screening;
+- executable **2D linear-elastic triangular FEM** using scikit-fem;
+- gravity body loading and optional surface pressure;
+- nodal displacement output suitable for visualization;
+- infrastructure dependency/failure propagation.
+
+### Monitoring and time-domain data
+
+- MQTT;
+- LoRaWAN network-server uplinks;
+- Modbus TCP;
+- OPC-UA;
+- PostGIS spatial persistence;
+- TimescaleDB telemetry storage;
+- InSAR displacement velocity and acceleration flagging.
+
+## CAD workflow
 
 ```text
-MEASURED    -> direct field/instrument observation
-INTERPRETED -> geological/geotechnical interpretation
-PREDICTED   -> interpolation, forecast or simulation
+Field / instrument / raster data
+            |
+            v
+     Spatial normalization
+   CRS + provenance + time
+            |
+            v
+  PostGIS / TimescaleDB
+            |
+      +-----+------+
+      |            |
+ measured      interpreted
+      |            |
+      +-----+------+
+            |
+        GeoTect CAD
+            |
+  draw / edit / correlate
+ section / extrude / measure
+            |
+            v
+     versioned project
+            |
+ +----------+-----------+
+ |          |           |
+ ERT     groundwater    FEM
+ |          |           |
+ +----------+-----------+
+            |
+     predicted outputs
+            |
+        digital twin
 ```
-
-Confidence and provenance remain attached throughout the pipeline. Predicted geology never silently becomes measured geology.
 
 ## Quick start
 
@@ -41,61 +111,51 @@ Confidence and provenance remain attached throughout the pipeline. Predicted geo
 docker compose up --build
 ```
 
-- Web CAD: http://localhost:5173
-- API/OpenAPI: http://localhost:8000/docs
+- GeoTect CAD: http://localhost:5173
+- API + OpenAPI: http://localhost:8000/docs
 - PostgreSQL/PostGIS/TimescaleDB: localhost:5432
 
-Optional MQTT worker:
+Optional field telemetry:
 
 ```bash
 docker compose --profile telemetry up --build
-```
-
-Optional industrial worker (configure device environment first):
-
-```bash
 docker compose --profile industrial up --build
 ```
 
-## Load a real DEM
-
-Open the web application and choose **Load GeoTIFF DEM**. GeoTect uploads the raster to the API, builds a bounded triangulated mesh, transforms it to EPSG:4326, and renders the actual terrain in Cesium. Large production rasters should later use tiled/streamed terrain instead of browser-scale meshes.
-
-## API groups
+## Major computational endpoints
 
 ```text
-/api/v1/workspace/*
-/api/v1/datasets/*
-/api/v1/geophysics/*
-/api/v1/iot/*
-/api/v1/telemetry/*
-/api/v1/uncertainty/*
-/api/v1/groundwater/*
-/api/v1/insar/*
-/api/v1/infrastructure/*
-/api/v1/simulation/*
-/api/v1/risk/*
+POST /api/v1/geophysics/ert/invert
+POST /api/v1/geophysics/seismic/reconstruct
+POST /api/v1/groundwater/pde
+POST /api/v1/simulation/fem/elastic
+POST /api/v1/simulation/lem
+POST /api/v1/datasets/geotiff/mesh
+POST /api/v1/datasets/las/tiles
+POST /api/v1/cad/solids/extrude
+POST /api/v1/cad/sections/fence
+POST /api/v1/cad/boreholes/correlate
+POST /api/v1/cad/projects
+POST /api/v1/cad/projects/{id}/versions
 ```
 
-## Repository map
+## Engineering fidelity
 
-```text
-apps/
-  web/            React + TypeScript + Cesium + deck.gl
-  api/            FastAPI scientific/spatial API
-services/
-  telemetry_worker.py
-  industrial_worker.py
-infrastructure/
-  db/init.sql     PostGIS + TimescaleDB
-docs/
-  architecture.md
-  data-pipeline.md
-examples/
-```
+GeoTect now contains **real executable baseline numerical methods**, but "implemented" does not mean every solver is equivalent to a specialist commercial package.
 
-## What is deliberately not faked
+- The ERT inversion core performs regularized inversion when supplied a physically valid sensitivity/Jacobian matrix; full electrode-geometry forward modelling can be supplied by pyGIMLi, SimPEG or validated vendor workflows.
+- Seismic reconstruction currently uses spatial trace interpolation and constant-velocity time-depth conversion; migration/tomography should be added for survey-specific production interpretation.
+- The groundwater module solves a 2D steady heterogeneous PDE; transient, unsaturated and density-dependent systems require additional equations.
+- The FEM module executes small-strain isotropic linear elasticity. Nonlinear soil constitutive laws, staged construction, contact, consolidation and dynamic response require validated extensions.
+- Borehole correlations are suggestions and remain unverified until a geologist/geotechnical engineer accepts them.
 
-GeoTect is not yet claiming full production inversion, FEM, groundwater PDE solving, point-cloud tiling, SEG-Y voxel rendering or automated engineering sign-off. Interfaces are in place where appropriate, but safety-critical numerical capability should be connected to validated solvers and tested against benchmark/field datasets.
+This boundary is intentional: GeoTect records the method and assumptions rather than presenting a baseline numerical result as a signed engineering design.
 
-The next engineering depth should focus on: tiled DEM/LAS streaming, ERT/seismic inversion-volume ingestion, borehole fence/section editing, snapping/drafting tools, geological solid construction, kriging/Gaussian-process uncertainty, FEM solver execution, and persisted project/version/review workflows.
+## CI
+
+GitHub Actions runs:
+
+- Python API/scientific tests;
+- React/TypeScript production build.
+
+See `docs/computational-kernels.md` and `docs/data-pipeline.md` for implementation details.
