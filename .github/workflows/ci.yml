@@ -16,6 +16,11 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: pytest -q
+      - run: python generate_verification.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solver-verification-dashboard
+          path: apps/api/verification-site
   web:
     runs-on: ubuntu-latest
     defaults:

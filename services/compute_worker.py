@@ -20,6 +20,10 @@ from solver_benchmarks import suite as nonlinear_benchmark_suite
 from coupled_up_fem import solve_monolithic_up_2d
 from elastoplastic_fem import solve_adaptive_elastoplastic
 from convergence_studies import full_matrix
+from quadratic_up_fem import solve_quadratic_up_2d
+from updated_lagrangian_fem import solve_updated_lagrangian_2d
+from strength_reduction import strength_reduction_search
+from verification_dashboard import write_dashboard
 
 HANDLERS={
  "monte_carlo_slope":lambda p:monte_carlo_slope(**p),
@@ -47,7 +51,11 @@ HANDLERS={
  "nonlinear_benchmarks":lambda p:nonlinear_benchmark_suite(),
  "monolithic_up_2d":lambda p:solve_monolithic_up_2d(**p),
  "adaptive_elastoplastic":lambda p:solve_adaptive_elastoplastic(p.get("base",{}),int(p.get("cycles",2)),float(p.get("refine_fraction",.2))),
- "convergence_matrix":lambda p:full_matrix()
+ "convergence_matrix":lambda p:full_matrix(),
+ "quadratic_up_2d":lambda p:solve_quadratic_up_2d(**p),
+ "updated_lagrangian_2d":lambda p:solve_updated_lagrangian_2d(**p),
+ "strength_reduction":lambda p:strength_reduction_search(p.get("base",{}),float(p.get("min_factor",1)),float(p.get("max_factor",5)),float(p.get("tolerance",.02)),int(p.get("max_iter",12)),p.get("displacement_limit_m")),
+ "verification_dashboard":lambda p:write_dashboard(p.get("output_dir","/tmp/geotect-verification"),p.get("version"),p.get("commit_sha"))
 }
 
 async def run_once():
