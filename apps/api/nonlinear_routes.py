@@ -191,3 +191,63 @@ async def gpu_constitutive(payload:dict,user:dict=Depends(require_permission("jo
         s,y,f=cuda_mohr_coulomb_batch(payload["stress"],payload["deps"],float(payload["E_kpa"]),float(payload["nu"]),float(payload["cohesion_kpa"]),float(payload["friction_deg"]))
         return {"stress":s.tolist(),"yielded":y.tolist(),"yield_function":f.tolist()}
     except Exception as exc:raise HTTPException(422,str(exc))
+
+
+from opensees_reference import available as opensees_available,pm4sand_simple_shear,manzari_dafalias_brick,sanisand_ms_brick
+from petsc_fieldsplit import solve_fieldsplit_schur
+from cuda_global_assembly import assemble_cuda_coo,cuda_assemble_and_solve
+from dynamic_up3d import solve_dynamic_up3d_hex
+from phase_field_fracture import solve_phase_field_2d,xfem_heaviside_enrichment
+from thm3d_fem import solve_thm3d_tet
+from experimental_validation import dataset_catalog,validate_channels,shake_table_objective
+
+@router.get("/reference/opensees")
+async def reference_opensees(user:dict=Depends(current_user)): return opensees_available()
+
+@router.post("/reference/pm4sand")
+async def reference_pm4sand(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return pm4sand_simple_shear(payload.get("parameters",{}),payload.get("strain_history",[]),float(payload.get("dt",.01)))
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/reference/manzari-dafalias")
+async def reference_manzari(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return manzari_dafalias_brick(payload.get("parameters",{}),payload.get("accel"),float(payload.get("dt",.01)))
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/reference/sanisand-ms")
+async def reference_sanisand(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return sanisand_ms_brick(payload.get("parameters",{}),payload.get("accel"),float(payload.get("dt",.01)))
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/dynamic/up3d")
+async def dynamic_up3d(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return solve_dynamic_up3d_hex(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/fracture/phase-field")
+async def phase_field(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return solve_phase_field_2d(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/fracture/xfem-enrichment")
+async def xfem(payload:dict,user:dict=Depends(current_user)):
+    try:return xfem_heaviside_enrichment(payload["nodes"],payload["crack_point"],payload["crack_normal"])
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/thm/3d")
+async def thm3d(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return solve_thm3d_tet(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.get("/validation/datasets")
+async def validation_datasets(user:dict=Depends(current_user)):return dataset_catalog()
+
+@router.post("/validation/channels")
+async def validation_channels(payload:dict,user:dict=Depends(current_user)):
+    try:return validate_channels(payload["observed"],payload["simulated"],payload["channel_map"])
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/validation/shake-table")
+async def validation_shake(payload:dict,user:dict=Depends(current_user)):
+    try:return shake_table_objective(payload["observed_accel"],payload["sim_accel"],payload.get("observed_pressure"),payload.get("sim_pressure"))
+    except Exception as exc:raise HTTPException(422,str(exc))

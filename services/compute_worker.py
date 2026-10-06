@@ -61,7 +61,10 @@ HANDLERS={
  "verification_dashboard":lambda p:write_dashboard(p.get("output_dir","/tmp/geotect-verification"),p.get("version"),p.get("commit_sha")),
  "up3d_tet":lambda p:solve_up3d_tet(**p),
  "up3d_hex":lambda p:solve_up3d_hex(**p),
- "thm_1d":lambda p:solve_thm_1d(**p)
+ "thm_1d":lambda p:solve_thm_1d(**p),
+ "dynamic_up3d":lambda p:solve_dynamic_up3d_hex(**p),
+ "phase_field_2d":lambda p:solve_phase_field_2d(**p),
+ "thm3d_tet":lambda p:solve_thm3d_tet(**p)
 }
 
 async def run_once():
@@ -86,3 +89,8 @@ async def main():
         if not worked:await asyncio.sleep(2)
 
 if __name__=="__main__":asyncio.run(main())
+
+
+from dynamic_up3d import solve_dynamic_up3d_hex
+from phase_field_fracture import solve_phase_field_2d
+from thm3d_fem import solve_thm3d_tet

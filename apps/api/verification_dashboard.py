@@ -16,7 +16,7 @@ def release_verification(version:str|None=None,commit_sha:str|None=None)->dict:
       "benchmarks":benchmarks,"convergence":{"passed":convergence.get("passed",False),"studies":studies},
       "execution_capabilities":caps,
       "summary":{"benchmarks_passed":bool(benchmarks.get("passed")),"convergence_passed":bool(convergence.get("passed"))},
-      "research_frontier":{"up3d_tet":True,"up3d_hex":True,"liquefaction_style":True,"anisotropic_critical_state":True,"nonlocal_softening":True,"fracture_remesh":True,"thm":True,"petsc_dmplex_optional":True,"gpu_constitutive_optional":True}}
+      "research_frontier":{"up3d_tet":True,"up3d_hex":True,"liquefaction_style":True,"anisotropic_critical_state":True,"nonlocal_softening":True,"fracture_remesh":True,"thm":True,"petsc_dmplex_optional":True,"gpu_constitutive_optional":True,"dynamic_up3d":True,"phase_field":True,"xfem":True,"thm3d":True,"opensees_reference_optional":True,"petsc_fieldsplit_schur_optional":True,"cuda_global_assembly_optional":True,"experimental_validation":True}}
 
 def render_html(report:dict)->str:
     rows=[]

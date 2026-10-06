@@ -1,0 +1,7 @@
+{"datasets":[
+{"id":"censeis","name":"CENSEIS: Centrifuge and Full-scale Modeling of Seismic Pore Pressures in Sands","doi":"10.4231/D3GF0MX4F","validation_targets":["acceleration","pore_pressure","settlement"]},
+{"id":"fliq","name":"FLIQ: Foundation and Ground Performance in Liquefaction Experiments","doi":"10.4231/D3M61BQ73","validation_targets":["acceleration","pore_pressure","foundation_response"]},
+{"id":"preshake","name":"PRESHAKE centrifuge liquefaction resistance database","doi":"10.4231/D38K74X78","validation_targets":["cyclic_resistance","pore_pressure"]},
+{"id":"leap","name":"LEAP Centrifuge Test and Numerical Simulation Specifications","doi":"10.17603/DS2159T","validation_targets":["lateral_displacement","acceleration","pore_pressure"]},
+{"id":"ngl","name":"Next Generation Liquefaction Database","provider":"DesignSafe/NGL","validation_targets":["field_triggering","ground_motion_intensity","manifestation"]}
+]}
