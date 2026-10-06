@@ -22,8 +22,11 @@ def principal_2d(stress:np.ndarray)->tuple[float,float,float]:
     return mean+rad,mean-rad,mean
 
 def invariants_plane(stress:np.ndarray)->tuple[float,float]:
-    s1,s3,_=principal_2d(stress)
-    p=.5*(s1+s3);q=s1-s3
+    # Tensor stresses use the mechanics convention (tension positive).
+    # Geotechnical p-q invariants below use compression positive.
+    smax,smin,_=principal_2d(stress)
+    sigma1_c=-smin;sigma3_c=-smax
+    p=.5*(sigma1_c+sigma3_c);q=max(sigma1_c-sigma3_c,0.0)
     return p,q
 
 class MohrCoulomb:
@@ -57,9 +60,10 @@ class MohrCoulomb:
         q_new=max(0.0,q-3*self.G*dl)
         # Preserve trial principal directions and reconstruct 2D tensor.
         sx,sy,txy=trial;theta=.5*math.atan2(2*txy,sx-sy)
-        s1=p_new+.5*q_new;s3=p_new-.5*q_new
+        sigma1_c=p_new+.5*q_new;sigma3_c=p_new-.5*q_new
+        smax=-sigma3_c;smin=-sigma1_c
         ct,st=math.cos(theta),math.sin(theta)
-        returned=np.array([s1*ct*ct+s3*st*st,s1*st*st+s3*ct*ct,(s1-s3)*st*ct])
+        returned=np.array([smax*ct*ct+smin*st*st,smax*st*st+smin*ct*ct,(smax-smin)*st*ct])
         dep_p=np.linalg.solve(self.D,trial-returned)
         ns=state.copy();ns.stress=returned;ns.plastic_strain=state.plastic_strain+dep_p
         ns.eq_plastic_shear=state.eq_plastic_shear+math.sqrt(max(2/3*np.dot(dep_p,dep_p),0));ns.plastic_volumetric=state.plastic_volumetric+dep_p[0]+dep_p[1];ns.yielded=True
@@ -116,8 +120,9 @@ class HardeningSoil:
                 if abs(f)<1e-6:break
                 G=E/(2*(1+self.nu));K=E/(3*(1-2*self.nu));dl=max(f/(3*G+K*self.M*self.Mpsi+self.E50r*.1),0)
                 p2=p+K*self.Mpsi*dl;q2=max(q-3*G*dl,0)
-                sx,sy,txy=stress;th=.5*math.atan2(2*txy,sx-sy);ct,st=math.cos(th),math.sin(th);s1=p2+.5*q2;s3=p2-.5*q2
-                corrected=np.array([s1*ct*ct+s3*st*st,s1*st*st+s3*ct*ct,(s1-s3)*st*ct])
+                sx,sy,txy=stress;th=.5*math.atan2(2*txy,sx-sy);ct,st=math.cos(th),math.sin(th)
+                sigma1_c=p2+.5*q2;sigma3_c=p2-.5*q2;smax=-sigma3_c;smin=-sigma1_c
+                corrected=np.array([smax*ct*ct+smin*st*st,smax*st*st+smin*ct*ct,(smax-smin)*st*ct])
                 inc=np.linalg.solve(D,stress-corrected);dep_p+=inc;stress=corrected
                 ns.eq_plastic_shear+=math.sqrt(max(2/3*np.dot(inc,inc),0))
             branch.append("shear")
@@ -129,8 +134,9 @@ class HardeningSoil:
             A=(q/max(self.capM,1e-6))**2+p*p;B=-p*pc
             alpha=max(0,min(1,-B/max(A,1e-12)))
             p2=alpha*p;q2=alpha*q
-            sx,sy,txy=stress;th=.5*math.atan2(2*txy,sx-sy);ct,st=math.cos(th),math.sin(th);s1=p2+.5*q2;s3=p2-.5*q2
-            corrected=np.array([s1*ct*ct+s3*st*st,s1*st*st+s3*ct*ct,(s1-s3)*st*ct])
+            sx,sy,txy=stress;th=.5*math.atan2(2*txy,sx-sy);ct,st=math.cos(th),math.sin(th)
+            sigma1_c=p2+.5*q2;sigma3_c=p2-.5*q2;smax=-sigma3_c;smin=-sigma1_c
+            corrected=np.array([smax*ct*ct+smin*st*st,smax*st*st+smin*ct*ct,(smax-smin)*st*ct])
             inc=np.linalg.solve(D,stress-corrected);dep_p+=inc;stress=corrected
             deps_v=max(-(inc[0]+inc[1]),0);ns.plastic_volumetric+=inc[0]+inc[1]
             ns.pc_kpa=pc*math.exp(deps_v*max(self.Eoedr/max(pc,1e-6),1e-6))
