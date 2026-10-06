@@ -1,16 +1,16 @@
 import {useEffect,useMemo,useState} from "react";
-import {KeyRound,Settings,BrainCircuit,Users,ShieldCheck,ScrollText,RefreshCw,Trash2,Save,LogIn,LogOut} from "lucide-react";
+import {KeyRound,Settings,BrainCircuit,Users,ShieldCheck,ScrollText,RefreshCw,Trash2,Save,LogIn,LogOut,Plug} from "lucide-react";
 import {configured,loginGoogle,logout,watchAuth} from "./firebase";
 import {adminFetch} from "./adminApi";
 
-type Tab="overview"|"models"|"keys"|"settings"|"users"|"audit";
+type Tab="overview"|"models"|"keys"|"settings"|"users"|"integrations"|"audit";
 export default function AdminDashboard({api,onClose}:{api:string;onClose:()=>void}){
  const [authUser,setAuthUser]=useState<any>(null);const [me,setMe]=useState<any>(null);const [tab,setTab]=useState<Tab>("overview");
  const [data,setData]=useState<any>(null);const [error,setError]=useState("");const [busy,setBusy]=useState(false);
 
  useEffect(()=>watchAuth(u=>{setAuthUser(u);setMe(null);setData(null);if(u)adminFetch(api,"/api/v1/admin/me").then(setMe).catch(e=>setError(e.message))}),[api]);
  async function load(t:Tab=tab){setBusy(true);setError("");try{
-   const path=t==="overview"?"/api/v1/admin/overview":t==="models"?"/api/v1/admin/models":t==="keys"?"/api/v1/admin/secrets":t==="settings"?"/api/v1/admin/settings":t==="users"?"/api/v1/admin/users":"/api/v1/admin/audit?limit=100";
+   const path=t==="overview"?"/api/v1/admin/overview":t==="models"?"/api/v1/admin/models":t==="keys"?"/api/v1/admin/secrets":t==="settings"?"/api/v1/admin/settings":t==="users"?"/api/v1/admin/users":t==="integrations"?"/api/v1/integrations/catalog":"/api/v1/admin/audit?limit=100";
    setData(await adminFetch(api,path));
  }catch(e:any){setError(e.message)}finally{setBusy(false)}}
  useEffect(()=>{if(me?.role==="super_admin")load(tab)},[tab,me?.role]);
@@ -24,7 +24,7 @@ export default function AdminDashboard({api,onClose}:{api:string;onClose:()=>voi
   <div className="adminLayout">
    <aside className="adminNav">
     <div className="adminIdentity"><ShieldCheck/><div><b>Super Admin</b><small>{me.email}</small></div></div>
-    {([["overview",ShieldCheck,"Overview"],["models",BrainCircuit,"Models"],["keys",KeyRound,"API Keys"],["settings",Settings,"Settings"],["users",Users,"Users & Roles"],["audit",ScrollText,"Audit Log"]] as any[]).map(([id,Icon,label])=><button key={id} className={tab===id?"activeAdminTab":""} onClick={()=>setTab(id)}><Icon/>{label}</button>)}
+    {([["overview",ShieldCheck,"Overview"],["models",BrainCircuit,"Models"],["keys",KeyRound,"API Keys"],["settings",Settings,"Settings"],["users",Users,"Users & Roles"],["integrations",Plug,"Integrations"],["audit",ScrollText,"Audit Log"]] as any[]).map(([id,Icon,label])=><button key={id} className={tab===id?"activeAdminTab":""} onClick={()=>setTab(id)}><Icon/>{label}</button>)}
     <button className="adminSignout" onClick={logout}><LogOut/>Sign out</button>
    </aside>
    <section className="adminContent">
@@ -42,6 +42,7 @@ function AdminTab({api,tab,data,refresh}:{api:string;tab:Tab;data:any;refresh:()
  if(tab==="keys")return <Secrets api={api} rows={data||[]} refresh={refresh}/>;
  if(tab==="settings")return <SettingsTab api={api} rows={data||[]} refresh={refresh}/>;
  if(tab==="users")return <UsersTab api={api} rows={data||[]} refresh={refresh}/>;
+ if(tab==="integrations")return <IntegrationsTab api={api} catalog={data||{}}/>;
  return <Audit rows={data||[]}/>;
 }
 function Overview({data}:{data:any}){if(!data)return null;return <><div className="adminCards">{Object.entries(data.counts||{}).map(([k,v])=><div className="adminCard" key={k}><span>{k.replace(/_/g," ")}</span><b>{String(v)}</b></div>)}</div><div className="securityBox"><h3>Security posture</h3><p><b>Role:</b> {data.role}</p><p><b>Encrypted secrets:</b> {data.security?.secrets_encrypted?"Enabled":"Disabled"}</p><p><b>Bootstrap super admin:</b> {data.security?.bootstrap_super_admin}</p><p><b>Permissions:</b> {data.permissions?.join(", ")}</p></div></>}
@@ -60,3 +61,26 @@ function UsersTab({api,rows,refresh}:{api:string;rows:any[];refresh:()=>void}){a
 function Audit({rows}:{rows:any[]}){return <DataTable rows={rows} columns={["created_at","actor_email","action","target","detail"]}/>}
 function DataTable({rows,columns}:{rows:any[];columns:string[]}){return <div className="adminTable"><table><thead><tr>{columns.map(c=><th key={c}>{c}</th>)}</tr></thead><tbody>{rows.map((r,i)=><tr key={i}>{columns.map(c=><td key={c}>{typeof r[c]==="object"?JSON.stringify(r[c]):String(r[c]??"")}</td>)}</tr>)}</tbody></table></div>}
 function AdminShell({children,onClose}:{children:any;onClose:()=>void}){return <div className="adminOverlay"><div className="adminWindow"><button className="adminClose" onClick={onClose}>×</button>{children}</div></div>}
+
+function IntegrationsTab({api,catalog}:{api:string;catalog:any}){
+ const [orgs,setOrgs]=useState<any[]>([]);const [orgId,setOrgId]=useState("");const [rows,setRows]=useState<any[]>([]);
+ const [provider,setProvider]=useState("esri_arcgis"),[name,setName]=useState("ArcGIS"),[baseUrl,setBaseUrl]=useState("");
+ const [created,setCreated]=useState<any>(null);const [err,setErr]=useState("");
+ useEffect(()=>{adminFetch(api,"/api/v1/platform/organizations").then((x:any[])=>{setOrgs(x);if(x[0])setOrgId(x[0].id)})},[api]);
+ async function load(id=orgId){if(id)setRows(await adminFetch(api,"/api/v1/integrations/connections?org_id="+encodeURIComponent(id)))}
+ useEffect(()=>{load()},[orgId]);
+ async function create(){setErr("");try{const x=await adminFetch(api,"/api/v1/integrations/connections",{method:"POST",body:JSON.stringify({org_id:orgId,provider,name,base_url:baseUrl||undefined,config:{}})});setCreated(x);await load()}catch(e:any){setErr(e.message)}}
+ return <div>
+  <div className="securityBox"><h3>Integration Hub</h3><p>Cloud REST connectors use encrypted credentials from API Keys. Desktop products use one-time bridge tokens and local bridge agents.</p></div>
+  <div className="adminForm grid4">
+   <select value={orgId} onChange={e=>setOrgId(e.target.value)}>{orgs.map(o=><option key={o.id} value={o.id}>{o.name}</option>)}</select>
+   <select value={provider} onChange={e=>{setProvider(e.target.value);setName(e.target.value)}}>{Object.keys(catalog).map(k=><option key={k}>{k}</option>)}</select>
+   <input value={baseUrl} onChange={e=>setBaseUrl(e.target.value)} placeholder="HTTPS base URL (REST connectors)"/>
+   <button onClick={create} disabled={!orgId}><Plug/>Add connector</button>
+  </div>
+  {err&&<div className="adminError">{err}</div>}
+  {created?.bridge_token&&<div className="securityBox"><h3>Bridge token — copy now</h3><p>This token is shown once and only its hash is retained.</p><code>{created.bridge_token}</code></div>}
+  <div className="moduleGrid">{Object.entries(catalog).map(([k,v]:any)=><div className="moduleCard" key={k}><Plug/><b>{k.replace(/_/g," ")}</b><small>{v.mode} · {v.auth?.join(", ")}</small><p>{v.capabilities?.join(", ")}</p></div>)}</div>
+  <h3>Configured connections</h3><DataTable rows={rows} columns={["provider","name","mode","base_url","enabled","updated_at"]}/>
+ </div>
+}

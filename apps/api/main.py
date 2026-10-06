@@ -7,6 +7,7 @@ from scientific_routes import router as scientific_router
 from cad_routes import router as cad_router
 from admin_routes import router as admin_router
 from platform_routes import router as platform_router
+from integration_routes import router as integration_router
 from db import init_db
 
 @asynccontextmanager
@@ -17,7 +18,7 @@ async def lifespan(app:FastAPI):
 
 app=FastAPI(title="GeoTect API",version="0.4.0",description="Computational 3D geotechnical CAD, Earth digital twin and secure administration API.",lifespan=lifespan)
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_credentials=False,allow_methods=["*"],allow_headers=["*"])
-app.include_router(scientific_router);app.include_router(cad_router);app.include_router(admin_router);app.include_router(platform_router)
+app.include_router(scientific_router);app.include_router(cad_router);app.include_router(admin_router);app.include_router(platform_router);app.include_router(integration_router)
 
 @app.get("/health")
 def health(): return {"status":"ok","service":"geotect-api","version":"0.4.0"}
@@ -29,7 +30,8 @@ def capabilities():
  "iot":["mqtt","lorawan","modbus","opcua"],"models":["groundwater_pde","insar","lem","linear_elastic_fem","infrastructure_failure"],
  "persistence":["postgis","timescaledb","project_versions"],
  "admin":["firebase_verified_auth","rbac","encrypted_api_keys","model_registry","system_settings","audit_log"],
- "platform":["organizations","asset_health","workflows","4d_events","compute_jobs","plugins","copilot","investigation_optimization","design_tools","reports","interop","emergency","esg","mine","construction","corridor"]}
+ "platform":["organizations","asset_health","workflows","4d_events","compute_jobs","plugins","copilot","investigation_optimization","design_tools","reports","interop","emergency","esg","mine","construction","corridor"],
+ "integrations":["esri_arcgis","seequent_evo","archicad_bridge","micromine_bridge","micromine_nexus","ogc_api_features","geoserver","qgis"]}
 
 @app.post("/api/v1/sites/analyze")
 def site_analyze(request:SiteAnalysisRequest): return analyze_site(request)

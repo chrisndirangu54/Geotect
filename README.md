@@ -115,6 +115,23 @@ Web CAD: `http://localhost:5173`
 
 API/OpenAPI: `http://localhost:8000/docs`
 
+## Vendor interoperability
+
+GeoTect now includes an Integration Hub for:
+
+- Esri ArcGIS Feature Services and ArcGIS REST workflows;
+- Seequent Evo geoscience objects, block models, files, workspaces and compute-task APIs;
+- Archicad through a secure local Automation API bridge;
+- Micromine Origin & Beyond through a secure MMpy bridge;
+- Micromine Nexus / Alastri governed data exchange;
+- OGC API Features;
+- GeoServer;
+- QGIS/PostGIS/GeoPackage/GeoJSON workflows.
+
+Desktop integrations use one-time bridge tokens. Cloud credentials remain encrypted in the GeoTect secret vault.
+
+See `docs/vendor-integrations.md`.
+
 ## Security
 
 The bootstrap super administrator is configured through:
