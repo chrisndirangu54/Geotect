@@ -17,3 +17,5 @@ obspy>=1.4
 scikit-fem>=11.0
 firebase-admin>=6.6
 cryptography>=44.0
+
+flopy>=3.9

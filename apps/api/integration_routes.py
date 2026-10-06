@@ -9,7 +9,7 @@ from sqlalchemy import select
 from db import SessionLocal
 from auth import current_user,require_permission
 from integration_models import IntegrationConnection,BridgeCommand
-from vendor_connectors import integration_catalog,esri_service_info,esri_query,esri_apply_edits,seequent_discovery,seequent_request,ogc_features
+from vendor_connectors import integration_catalog,esri_service_info,esri_query,esri_apply_edits,seequent_discovery,seequent_request,ogc_features,autodesk_request,bentley_request,trimble_request
 import httpx
 from model_registry import get_provider_secret
 
@@ -187,3 +187,75 @@ async def micromine_nexus_request(connection_id:str,payload:dict,user:dict=Depen
         if not resp.content:return {"status":resp.status_code}
         try:return resp.json()
         except Exception:return {"status":resp.status_code,"text":resp.text[:2000]}
+
+
+@router.post("/autodesk/{connection_id}/request")
+async def autodesk_api(connection_id:str,payload:dict,user:dict=Depends(current_user)):
+    row=await _connection(connection_id)
+    if row.provider!="autodesk_aps":raise HTTPException(400,"not an Autodesk APS connection")
+    token=await get_provider_secret("autodesk_aps",str(row.config.get("secret_name","access_token")))
+    if not token:raise HTTPException(400,"Autodesk APS access token is not configured")
+    path=str(payload.get("path","")).lstrip("/")
+    if not path:raise HTTPException(400,"path is required")
+    method=str(payload.get("method","GET")).upper()
+    if method not in {"GET","POST","PUT","PATCH","DELETE"}:raise HTTPException(400,"unsupported method")
+    return await autodesk_request(path,token,method,payload.get("payload"),payload.get("params"))
+
+@router.post("/bentley/{connection_id}/request")
+async def bentley_api(connection_id:str,payload:dict,user:dict=Depends(current_user)):
+    row=await _connection(connection_id)
+    if row.provider not in {"bentley_itwin","openground"}:raise HTTPException(400,"not a Bentley iTwin/OpenGround connection")
+    token=await get_provider_secret("bentley_itwin",str(row.config.get("secret_name","access_token")))
+    if not token:raise HTTPException(400,"Bentley iTwin access token is not configured")
+    path=str(payload.get("path","")).lstrip("/")
+    if not path:raise HTTPException(400,"path is required")
+    method=str(payload.get("method","GET")).upper()
+    if method not in {"GET","POST","PUT","PATCH","DELETE"}:raise HTTPException(400,"unsupported method")
+    return await bentley_request(path,token,method,payload.get("payload"),payload.get("params"))
+
+@router.post("/trimble/{connection_id}/request")
+async def trimble_api(connection_id:str,payload:dict,user:dict=Depends(current_user)):
+    row=await _connection(connection_id)
+    if row.provider!="trimble_connect" or not row.base_url:raise HTTPException(400,"not a Trimble Connect connection")
+    token=await get_provider_secret("trimble_connect",str(row.config.get("secret_name","access_token")))
+    if not token:raise HTTPException(400,"Trimble Connect access token is not configured")
+    base=_safe_url(row.base_url,["trimble.com"])
+    path=str(payload.get("path","")).lstrip("/")
+    method=str(payload.get("method","GET")).upper()
+    if method not in {"GET","POST","PUT","PATCH","DELETE"}:raise HTTPException(400,"unsupported method")
+    return await trimble_request(base,path,token,method,payload.get("payload"),payload.get("params"))
+
+@router.post("/exchange/{connection_id}/manifest")
+async def exchange_manifest(connection_id:str,payload:dict,user:dict=Depends(current_user)):
+    row=await _connection(connection_id)
+    if row.provider not in {"deswik","geostudio","qgis"}:raise HTTPException(400,"connector does not use governed file exchange")
+    files=payload.get("files",[])
+    return {"connection_id":connection_id,"provider":row.provider,"accepted":True,
+      "files":[{"name":str(x.get("name","")),"format":str(x.get("format","unknown")),"role":str(x.get("role","data")),"crs":x.get("crs")} for x in files],
+      "exchange_contract":row.config.get("exchange_contract",{}),"status":"manifest_validated"}
+
+@router.post("/modflow/build")
+async def modflow_build(payload:dict,user:dict=Depends(current_user)):
+    from modflow_exchange import build_mf6_groundwater
+    try:return build_mf6_groundwater(payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/modflow/run")
+async def modflow_run(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    from modflow_exchange import run_mf6
+    try:return run_mf6(payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/connections/{connection_id}/health")
+async def integration_health(connection_id:str,user:dict=Depends(current_user)):
+    row=await _connection(connection_id)
+    if row.mode=="local_bridge":
+        async with SessionLocal() as s:
+            q=await s.execute(select(BridgeCommand).where(BridgeCommand.connection_id==connection_id).order_by(BridgeCommand.updated_at.desc()).limit(1))
+            last=q.scalar_one_or_none()
+            return {"provider":row.provider,"mode":row.mode,"configured":True,"last_command_status":last.status if last else None,
+                    "note":"Queue a health command to verify the desktop bridge is online."}
+    if row.provider=="autodesk_aps":return {"provider":row.provider,"configured":bool(await get_provider_secret("autodesk_aps",str(row.config.get("secret_name","access_token"))))}
+    if row.provider in {"bentley_itwin","openground"}:return {"provider":row.provider,"configured":bool(await get_provider_secret("bentley_itwin",str(row.config.get("secret_name","access_token"))))}
+    if row.provider=="trimble_connect":return {"provider":row.provider,"configured":bool(row.base_url and await get_provider_secret("trimble_connect",str(row.config.get("secret_name","access_token"))))}
+    return {"provider":row.provider,"configured":True,"mode":row.mode}
