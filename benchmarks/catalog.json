@@ -1,0 +1,36 @@
+{
+  "benchmarks":[
+    {
+      "id":"mc_biaxial",
+      "type":"constitutive",
+      "target":"Mohr-Coulomb yield envelope and return mapping",
+      "reference":"PLAXIS Bi-axial test with Mohr-Coulomb model",
+      "reference_url":"https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0110017",
+      "status":"analytical_regression_plus_commercial_crosscheck"
+    },
+    {
+      "id":"biot_poroelasticity",
+      "type":"coupled_hydro_mechanical",
+      "target":"pore pressure and displacement response",
+      "reference":"PLAXIS Biot theory of poroelasticity; analytical Detournay & Cheng reference",
+      "reference_url":"https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0110692",
+      "status":"analytical_regression_plus_commercial_crosscheck"
+    },
+    {
+      "id":"mc_footing_capacity",
+      "type":"boundary_value",
+      "target":"ultimate bearing pressure",
+      "reference":"GeoStudio SIGMA/W Footing Load on Mohr-Coulomb Soil",
+      "reference_url":"https://bentleysystems.service-now.com/community?id=kb_article_view&sysparm_article=KB0047646",
+      "status":"closed_form_plus_commercial_crosscheck"
+    },
+    {
+      "id":"hardening_soil",
+      "type":"constitutive",
+      "target":"stress-dependent stiffness, shear and cap hardening",
+      "reference":"PLAXIS Hardening Soil formulation and verification",
+      "reference_url":"https://bentleysystems.service-now.com/community?id=kb_article&sysparm_article=KB0110202",
+      "status":"commercial_crosscheck_required"
+    }
+  ]
+}

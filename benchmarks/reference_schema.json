@@ -1,0 +1,16 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "title":"GeoTect commercial solver reference result",
+  "type":"object",
+  "required":["benchmark_id","solver","solver_version","metrics","source"],
+  "properties":{
+    "benchmark_id":{"type":"string"},
+    "solver":{"type":"string"},
+    "solver_version":{"type":"string"},
+    "metrics":{"type":"object","additionalProperties":{"type":"number"}},
+    "source":{"type":"object","required":["title"],"properties":{"title":{"type":"string"},"url":{"type":"string"},"notes":{"type":"string"}}},
+    "tolerances":{"type":"object","additionalProperties":{"type":"number"}},
+    "model_parameters":{"type":"object"},
+    "mesh":{"type":"object"}
+  }
+}

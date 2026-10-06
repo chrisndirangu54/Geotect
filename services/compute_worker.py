@@ -13,6 +13,10 @@ from seismic_volume import reconstruct_volume
 from advanced_engineering import transient_diffusion,newmark_sliding,consolidation_time,inverse_velocity_failure,coupled_hydro_mechanical
 from calibration import calibrate_scalar
 from nonlinear_coupled import solve_staggered_hm,benchmark_suite
+from elastoplastic_fem import solve_elastoplastic_2d,staged_excavation
+from biot_solver import solve_biot_1d
+from richards_solver import solve_richards_1d
+from solver_benchmarks import suite as nonlinear_benchmark_suite
 
 HANDLERS={
  "monte_carlo_slope":lambda p:monte_carlo_slope(**p),
@@ -32,7 +36,12 @@ HANDLERS={
  "hydro_mechanical":lambda p:coupled_hydro_mechanical(**p),
  "calibrate_scalar":lambda p:calibrate_scalar(**p),
  "nonlinear_hm":lambda p:solve_staggered_hm(**p),
- "solver_benchmarks":lambda p:benchmark_suite()
+ "solver_benchmarks":lambda p:benchmark_suite(),
+ "elastoplastic_fem":lambda p:solve_elastoplastic_2d(**p),
+ "staged_elastoplastic":lambda p:staged_excavation(p.get("base",{}),p.get("stages",[])),
+ "biot_1d":lambda p:solve_biot_1d(**p),
+ "richards_1d":lambda p:solve_richards_1d(**p),
+ "nonlinear_benchmarks":lambda p:nonlinear_benchmark_suite()
 }
 
 async def run_once():
