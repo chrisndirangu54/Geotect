@@ -39,8 +39,8 @@ class MohrCoulomb:
     def __init__(self,E_kpa:float,nu:float,cohesion_kpa:float,friction_deg:float,dilation_deg:float=0,tensile_cutoff_kpa:float=0):
         self.E=E_kpa;self.nu=nu;self.c=cohesion_kpa;self.phi=math.radians(friction_deg);self.psi=math.radians(dilation_deg);self.tension=tensile_cutoff_kpa
         self.D=elastic_matrix(E_kpa,nu);self.G=E_kpa/(2*(1+nu));self.K=E_kpa/(3*(1-2*nu))
-        self.M=2*math.sin(self.phi)/(1-math.sin(self.phi)+1e-12);self.k=2*self.c*math.cos(self.phi)/(1-math.sin(self.phi)+1e-12)
-        self.Mpsi=2*math.sin(self.psi)/(1-math.sin(self.psi)+1e-12)
+        self.M=2*math.sin(self.phi);self.k=2*self.c*math.cos(self.phi)
+        self.Mpsi=2*math.sin(self.psi)
 
     def initial_state(self)->MaterialState:return MaterialState(np.zeros(3),np.zeros(3))
 
@@ -54,10 +54,10 @@ class MohrCoulomb:
             ns=state.copy();ns.stress=trial;ns.yielded=False
             return ns,self.D,{"yield_value":f,"plastic_multiplier":0.0,"branch":"elastic"}
         # Return in p-q using plastic potential g=q-Mpsi*p.
-        denom=3*self.G+self.K*self.M*self.Mpsi
+        denom=2*self.G+self.K*self.M*self.Mpsi
         dl=max(f/max(denom,1e-12),0.0)
         p_new=p+self.K*self.Mpsi*dl
-        q_new=max(0.0,q-3*self.G*dl)
+        q_new=max(0.0,q-2*self.G*dl)
         # Preserve trial principal directions and reconstruct 2D tensor.
         sx,sy,txy=trial;theta=.5*math.atan2(2*txy,sx-sy)
         sigma1_c=p_new+.5*q_new;sigma3_c=p_new-.5*q_new
@@ -84,7 +84,7 @@ class HardeningSoil:
                  Rf:float=.9,pc0_kpa:float=100,cap_M:float=1.2):
         self.E50r=E50_ref_kpa;self.Eoedr=Eoed_ref_kpa;self.Eurr=Eur_ref_kpa;self.nu=nu_ur;self.c=cohesion_kpa
         self.phi=math.radians(friction_deg);self.psi=math.radians(dilation_deg);self.m=m;self.pref=p_ref_kpa;self.Rf=Rf;self.pc0=pc0_kpa;self.capM=cap_M
-        self.M=2*math.sin(self.phi)/(1-math.sin(self.phi)+1e-12);self.k=2*self.c*math.cos(self.phi)/(1-math.sin(self.phi)+1e-12);self.Mpsi=2*math.sin(self.psi)/(1-math.sin(self.psi)+1e-12)
+        self.M=2*math.sin(self.phi);self.k=2*self.c*math.cos(self.phi);self.Mpsi=2*math.sin(self.psi)
 
     def stiffness(self,p_kpa:float,unloading:bool=False,oedometer:bool=False)->float:
         base=self.Eurr if unloading else self.Eoedr if oedometer else self.E50r
@@ -118,8 +118,8 @@ class HardeningSoil:
                 mob=1-math.exp(-max(ns.eq_plastic_shear,0)*self.E50r/qf);qy=max(.05*qf,min(self.Rf*qf,qf*max(mob,.05)))
                 f=q-qy
                 if abs(f)<1e-6:break
-                G=E/(2*(1+self.nu));K=E/(3*(1-2*self.nu));dl=max(f/(3*G+K*self.M*self.Mpsi+self.E50r*.1),0)
-                p2=p+K*self.Mpsi*dl;q2=max(q-3*G*dl,0)
+                G=E/(2*(1+self.nu));K=E/(3*(1-2*self.nu));dl=max(f/(2*G+K*self.M*self.Mpsi+self.E50r*.1),0)
+                p2=p+K*self.Mpsi*dl;q2=max(q-2*G*dl,0)
                 sx,sy,txy=stress;th=.5*math.atan2(2*txy,sx-sy);ct,st=math.cos(th),math.sin(th)
                 sigma1_c=p2+.5*q2;sigma3_c=p2-.5*q2;smax=-sigma3_c;smin=-sigma1_c
                 corrected=np.array([smax*ct*ct+smin*st*st,smax*st*st+smin*ct*ct,(smax-smin)*st*ct])

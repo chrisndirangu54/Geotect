@@ -1,6 +1,6 @@
 from __future__ import annotations
 import math,numpy as np
-from elastoplastic_materials import MohrCoulomb,HardeningSoil,numerical_tangent
+from elastoplastic_materials import MohrCoulomb
 from biot_solver import solve_biot_1d
 from richards_solver import solve_richards_1d
 from elastoplastic_fem import solve_elastoplastic_2d
@@ -13,17 +13,15 @@ REFERENCE_CATALOG={
 }
 
 def mc_local_biaxial()->dict:
-    m=MohrCoulomb(30000,.3,10,30,0);s=m.initial_state();eps=np.zeros(3)
+    m=MohrCoulomb(30000,.3,10,30,0);s=m.initial_state();s.stress=np.array([-100.0,-100.0,0.0]);yielded=False
     for _ in range(100):
-        eps+=np.array([0,-2e-5,0]);s,_,_=m.integrate(s,np.array([0,-2e-5,0]))
-    p,q=(lambda st:((st[0]+st[1])/2,abs(st[0]-st[1])))(s.stress)
-    M=2*math.sin(math.radians(30))/(1-math.sin(math.radians(30)));k=2*10*math.cos(math.radians(30))/(1-math.sin(math.radians(30)))
-    err=abs(q-(M*p+k))
-    return {"name":"mc_local_biaxial","yield_error_kpa":err,"pass":err<1e-3,"reference":REFERENCE_CATALOG["plaxis_mc_biaxial"]}
+        s,_,_=m.integrate(s,np.array([5e-5,-5e-5,0]));yielded=yielded or s.yielded
+    p=-(s.stress[0]+s.stress[1])/2;q=abs(s.stress[0]-s.stress[1])
+    M=2*math.sin(math.radians(30));k=2*10*math.cos(math.radians(30));err=abs(q-(M*p+k))
+    return {"name":"mc_local_biaxial","yielded":yielded,"yield_error_kpa":float(err),"pass":bool(yielded and err<1e-3),"reference":REFERENCE_CATALOG["plaxis_mc_biaxial"]}
 
 def terzaghi_biot()->dict:
     out=solve_biot_1d(10,21,30e6,.3,1e-9,9810,1.0,1e-9,100e3,3600,24)
-    # qualitative monotonic dissipation and settlement growth under drained top
     pp=[x["max_pore_pressure_pa"] for x in out["series"]];ss=[x["top_settlement_m"] for x in out["series"]]
     ok=all(np.isfinite(pp)) and all(np.isfinite(ss)) and ss[-1]>=ss[0]
     return {"name":"biot_1d_consolidation","pass":bool(ok),"final_settlement_m":ss[-1],"reference":REFERENCE_CATALOG["terzaghi_1d"]}

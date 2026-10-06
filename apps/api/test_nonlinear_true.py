@@ -6,17 +6,17 @@ from richards_solver import solve_richards_1d
 from solver_benchmarks import suite
 
 def test_mc_return_mapping_on_envelope():
-    m=MohrCoulomb(30000,.3,10,30,0);s=m.initial_state()
+    m=MohrCoulomb(30000,.3,10,30,0);s=m.initial_state();s.stress=np.array([-100.0,-100.0,0.0])
     yielded=False
     for _ in range(100):
-        s,_,info=m.integrate(s,np.array([0,-5e-5,0]))
+        s,_,info=m.integrate(s,np.array([5e-5,-5e-5,0]))
         yielded=yielded or s.yielded
     assert yielded
     assert abs(m.yield_value(s.stress))<1e-3
 
 def test_hardening_soil_state_evolves():
-    m=HardeningSoil(30000,25000,90000,.2,5,30,0,.5,100,.9,100,1.2);s=m.initial_state()
-    for _ in range(60):s,_,_=m.integrate(s,np.array([0,-8e-5,0]))
+    m=HardeningSoil(30000,25000,90000,.2,5,30,0,.5,100,.9,100,1.2);s=m.initial_state();s.stress=np.array([-100.0,-100.0,0.0])
+    for _ in range(60):s,_,_=m.integrate(s,np.array([5e-5,-5e-5,0]))
     assert s.eq_plastic_shear>=0
     assert s.pc_kpa>0
 
