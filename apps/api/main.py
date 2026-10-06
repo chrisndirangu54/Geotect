@@ -10,6 +10,7 @@ from platform_routes import router as platform_router
 from integration_routes import router as integration_router
 from standards_routes import router as standards_router
 from operations_routes import router as operations_router
+from production_routes import router as production_router
 from db import init_db
 from rate_limit import RateLimitMiddleware
 
@@ -22,7 +23,7 @@ async def lifespan(app:FastAPI):
 app=FastAPI(title="GeoTect API",version="0.6.0",description="Computational 3D geotechnical CAD, Earth digital twin and secure administration API.",lifespan=lifespan)
 app.add_middleware(RateLimitMiddleware)
 app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_credentials=False,allow_methods=["*"],allow_headers=["*"])
-app.include_router(scientific_router);app.include_router(cad_router);app.include_router(admin_router);app.include_router(platform_router);app.include_router(integration_router);app.include_router(standards_router);app.include_router(operations_router)
+app.include_router(scientific_router);app.include_router(cad_router);app.include_router(admin_router);app.include_router(platform_router);app.include_router(integration_router);app.include_router(standards_router);app.include_router(operations_router);app.include_router(production_router)
 
 @app.get("/health")
 def health(): return {"status":"ok","service":"geotect-api","version":"0.6.0"}

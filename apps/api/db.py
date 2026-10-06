@@ -32,6 +32,6 @@ class TelemetryPoint(Base):
 
 async def init_db():
     # Import mapped classes before metadata creation.
-    import project_store,admin_models,platform_models,integration_models,governance_models,field_models,enterprise_models
+    import project_store,admin_models,platform_models,integration_models,governance_models,field_models,enterprise_models,production_models
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

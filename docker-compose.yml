@@ -21,6 +21,11 @@ services:
       DATABASE_URL: postgresql+asyncpg://geotect:geotect@db:5432/geotect
       GEOTECT_SUPER_ADMIN_EMAIL: chrisndirangu54@gmail.com
       GEOTECT_MASTER_KEY: ${GEOTECT_MASTER_KEY:?set GEOTECT_MASTER_KEY}
+      REDIS_URL: redis://redis:6379/0
+      S3_ENDPOINT_URL: http://minio:9000
+      GEOTECT_OBJECT_BUCKET: geotect
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-geotect}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-geotect-change-me}
       GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
     volumes:
       - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
@@ -28,6 +33,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+      minio-init:
+        condition: service_completed_successfully
 
   web:
     build: ./apps/web
@@ -88,6 +97,36 @@ services:
       GEOTECT_EDGE_FORWARD_URL: ${GEOTECT_EDGE_FORWARD_URL:-}
       EDGE_RULES: ${EDGE_RULES:-[]}
 
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server","--appendonly","yes"]
+    ports: ["6379:6379"]
+    volumes:
+      - geotect-redis:/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-geotect}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-geotect-change-me}
+    ports: ["9000:9000","9001:9001"]
+    volumes:
+      - geotect-objects:/data
+
+  minio-init:
+    image: minio/mc:latest
+    depends_on: [minio]
+    entrypoint: >
+      /bin/sh -c "
+      until /usr/bin/mc alias set local http://minio:9000 ${MINIO_ROOT_USER:-geotect} ${MINIO_ROOT_PASSWORD:-geotect-change-me}; do sleep 2; done;
+      /usr/bin/mc mb --ignore-existing local/geotect;
+      /usr/bin/mc anonymous set none local/geotect;
+      exit 0;
+      "
+
 volumes:
   geotect-db:
   geotect-edge:
+  geotect-redis:
+  geotect-objects:

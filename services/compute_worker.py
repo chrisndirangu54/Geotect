@@ -12,6 +12,7 @@ from ert_inversion import invert_ert
 from seismic_volume import reconstruct_volume
 from advanced_engineering import transient_diffusion,newmark_sliding,consolidation_time,inverse_velocity_failure,coupled_hydro_mechanical
 from calibration import calibrate_scalar
+from nonlinear_coupled import solve_staggered_hm,benchmark_suite
 
 HANDLERS={
  "monte_carlo_slope":lambda p:monte_carlo_slope(**p),
@@ -29,7 +30,9 @@ HANDLERS={
  "consolidation":lambda p:consolidation_time(**p),
  "inverse_velocity":lambda p:inverse_velocity_failure(**p),
  "hydro_mechanical":lambda p:coupled_hydro_mechanical(**p),
- "calibrate_scalar":lambda p:calibrate_scalar(**p)
+ "calibrate_scalar":lambda p:calibrate_scalar(**p),
+ "nonlinear_hm":lambda p:solve_staggered_hm(**p),
+ "solver_benchmarks":lambda p:benchmark_suite()
 }
 
 async def run_once():
