@@ -16,6 +16,14 @@ from cyclic_materials import cyclic_series,newmark_beta_sdof
 from contact_surfaces import SurfaceContactState,coulomb_surface_contact
 from parallel_backends import execution_capabilities,petsc_available
 from verification_dashboard import release_verification,render_html
+from up3d_fem import solve_up3d_tet
+from hex8_up_fem import solve_up3d_hex
+from materials3d import AnisotropicCriticalState,LiquefactionSandStyle
+from nonlocal_softening import regularized_strength
+from fracture_remesh import remesh_contact_surfaces
+from thm_coupling import solve_thm_1d
+from petsc_dmplex import create_distributed_box
+from gpu_constitutive import cuda_mohr_coulomb_batch
 
 router=APIRouter(prefix="/api/v1/nonlinear",tags=["nonlinear-fem"])
 
@@ -122,3 +130,64 @@ async def verification_report(user:dict=Depends(current_user)):return release_ve
 async def verification_dashboard(user:dict=Depends(current_user)):
     from fastapi.responses import HTMLResponse
     return HTMLResponse(render_html(release_verification()))
+
+
+@router.post("/up3d/tet")
+async def up3d_tet(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return solve_up3d_tet(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/up3d/hex")
+async def up3d_hex(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return solve_up3d_hex(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/materials3d/liquefaction-style")
+async def liquefaction_style(payload:dict,user:dict=Depends(current_user)):
+    try:
+        m=LiquefactionSandStyle(**payload.get("parameters",{}));s=m.initial()
+        import numpy as np
+        history=[]
+        for deps in payload.get("strain_increments",[]):
+            s,_,meta=m.integrate(s,np.asarray(deps,dtype=float),float(payload.get("effective_mean_kpa",100)))
+            history.append({"state":{"stress":s.stress.tolist(),"eqp":s.eqp,"ru":s.pore_pressure_ratio,"fabric":s.fabric.tolist() if s.fabric is not None else None},"meta":meta})
+        return {"history":history,"model":"PM4Sand/UBCSAND-style research formulation","equivalence_claim":False}
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/materials3d/critical-state")
+async def critical_state(payload:dict,user:dict=Depends(current_user)):
+    try:
+        import numpy as np
+        m=AnisotropicCriticalState(**payload.get("parameters",{}));s=m.initial();hist=[]
+        for deps in payload.get("strain_increments",[]):
+            s,_,meta=m.integrate(s,np.asarray(deps,dtype=float));hist.append({"stress":s.stress.tolist(),"eqp":s.eqp,"hardening":s.hardening,"meta":meta})
+        return {"history":hist,"model":"anisotropic critical-state research formulation"}
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/regularization/nonlocal")
+async def nonlocal_regularization(payload:dict,user:dict=Depends(current_user)):
+    try:return regularized_strength(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/fracture/remesh")
+async def fracture_remesh(payload:dict,user:dict=Depends(current_user)):
+    try:return remesh_contact_surfaces(payload["nodes"],payload["triangles"],payload["damage"],float(payload.get("threshold",.8)))
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.post("/thm/1d")
+async def thm(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:return solve_thm_1d(**payload)
+    except Exception as exc:raise HTTPException(422,str(exc))
+
+@router.get("/petsc/dmplex")
+async def dmplex_info(user:dict=Depends(current_user)):
+    try:
+        dm,meta=create_distributed_box();dm.destroy();return meta
+    except Exception as exc:return {"available":False,"reason":str(exc)}
+
+@router.post("/gpu/constitutive")
+async def gpu_constitutive(payload:dict,user:dict=Depends(require_permission("jobs.execute"))):
+    try:
+        s,y,f=cuda_mohr_coulomb_batch(payload["stress"],payload["deps"],float(payload["E_kpa"]),float(payload["nu"]),float(payload["cohesion_kpa"]),float(payload["friction_deg"]))
+        return {"stress":s.tolist(),"yielded":y.tolist(),"yield_function":f.tolist()}
+    except Exception as exc:raise HTTPException(422,str(exc))

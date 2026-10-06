@@ -24,6 +24,9 @@ from quadratic_up_fem import solve_quadratic_up_2d
 from updated_lagrangian_fem import solve_updated_lagrangian_2d
 from strength_reduction import strength_reduction_search
 from verification_dashboard import write_dashboard
+from up3d_fem import solve_up3d_tet
+from hex8_up_fem import solve_up3d_hex
+from thm_coupling import solve_thm_1d
 
 HANDLERS={
  "monte_carlo_slope":lambda p:monte_carlo_slope(**p),
@@ -55,7 +58,10 @@ HANDLERS={
  "quadratic_up_2d":lambda p:solve_quadratic_up_2d(**p),
  "updated_lagrangian_2d":lambda p:solve_updated_lagrangian_2d(**p),
  "strength_reduction":lambda p:strength_reduction_search(p.get("base",{}),float(p.get("min_factor",1)),float(p.get("max_factor",5)),float(p.get("tolerance",.02)),int(p.get("max_iter",12)),p.get("displacement_limit_m")),
- "verification_dashboard":lambda p:write_dashboard(p.get("output_dir","/tmp/geotect-verification"),p.get("version"),p.get("commit_sha"))
+ "verification_dashboard":lambda p:write_dashboard(p.get("output_dir","/tmp/geotect-verification"),p.get("version"),p.get("commit_sha")),
+ "up3d_tet":lambda p:solve_up3d_tet(**p),
+ "up3d_hex":lambda p:solve_up3d_hex(**p),
+ "thm_1d":lambda p:solve_thm_1d(**p)
 }
 
 async def run_once():
