@@ -48,7 +48,7 @@ function Investigation({api}:{api:string}){const [out,setOut]=useState<any>(null
 
 function Modules({api}:{api:string}){const [mods,setMods]=useState<any>({});
  useEffect(()=>{adminFetch(api,"/api/v1/platform/templates").then(setMods)},[api]);
- return <Panel title="Domain Modules" sub="Preconfigured layers, risks and workflows for major ground-engineering sectors."><div className="moduleGrid">{Object.entries(mods).map(([k,v]:any)=>{const I=moduleIcons[k]||Building2;return <div className="moduleCard" key={k}><I/><b>{k.replaceAll("_"," ")}</b><small>{(v.layers||[]).slice(0,5).join(" · ")}</small><p>{(v.risks||[]).join(", ")}</p></div>})}</div></Panel>}
+ return <Panel title="Domain Modules" sub="Preconfigured layers, risks and workflows for major ground-engineering sectors."><div className="moduleGrid">{Object.entries(mods).map(([k,v]:any)=>{const I=moduleIcons[k]||Building2;return <div className="moduleCard" key={k}><I/><b>{k.replace(/_/g," ")}</b><small>{(v.layers||[]).slice(0,5).join(" · ")}</small><p>{(v.risks||[]).join(", ")}</p></div>})}</div></Panel>}
 
 function Timeline({api,orgId}:{api:string;orgId:string}){const [events,setEvents]=useState<any[]>([]);const [cursor,setCursor]=useState(100);
  useEffect(()=>{if(orgId)adminFetch(api,`/api/v1/platform/events?org_id=${encodeURIComponent(orgId)}`).then(setEvents)},[api,orgId]);
