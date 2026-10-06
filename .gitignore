@@ -9,9 +9,14 @@ node_modules/
 dist/
 .vite/
 
-# Environment
+# Environment / credentials
 .env
 .env.*
+!.env.example
+secrets/
+*.pem
+*.key
+*service-account*.json
 
 # IDE / OS
 .vscode/

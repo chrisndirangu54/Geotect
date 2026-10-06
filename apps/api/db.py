@@ -31,5 +31,7 @@ class TelemetryPoint(Base):
     meta:Mapped[dict]=mapped_column(JSON,default=dict)
 
 async def init_db():
+    # Import mapped classes before metadata creation.
+    import project_store,admin_models
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)

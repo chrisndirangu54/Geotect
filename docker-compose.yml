@@ -19,6 +19,11 @@ services:
     build: ./apps/api
     environment:
       DATABASE_URL: postgresql+asyncpg://geotect:geotect@db:5432/geotect
+      GEOTECT_SUPER_ADMIN_EMAIL: chrisndirangu54@gmail.com
+      GEOTECT_MASTER_KEY: ${GEOTECT_MASTER_KEY:?set GEOTECT_MASTER_KEY}
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/firebase-service-account.json
+    volumes:
+      - ./secrets/firebase-service-account.json:/run/secrets/firebase-service-account.json:ro
     ports: ["8000:8000"]
     depends_on:
       db:
@@ -29,6 +34,10 @@ services:
     ports: ["5173:5173"]
     environment:
       VITE_API_URL: http://localhost:8000
+      VITE_FIREBASE_API_KEY: ${VITE_FIREBASE_API_KEY}
+      VITE_FIREBASE_AUTH_DOMAIN: ${VITE_FIREBASE_AUTH_DOMAIN}
+      VITE_FIREBASE_PROJECT_ID: ${VITE_FIREBASE_PROJECT_ID}
+      VITE_FIREBASE_APP_ID: ${VITE_FIREBASE_APP_ID}
     depends_on: [api]
 
   telemetry:

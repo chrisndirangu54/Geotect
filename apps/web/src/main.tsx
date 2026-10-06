@@ -7,6 +7,8 @@ import CadToolbar,{type CadMode} from "./CadToolbar";
 import SectionView from "./SectionView";
 import FeatureInspector from "./FeatureInspector";
 import ComputePanel from "./ComputePanel";
+import AdminDashboard from "./AdminDashboard";
+import {ShieldCheck} from "lucide-react";
 import {useHistory} from "./useHistory";
 import type {CadFeature,ScenePayload} from "./types";
 import "./styles.css";
@@ -18,7 +20,7 @@ function App(){
  const [status,setStatus]=useState("connecting");const [slope,setSlope]=useState(32);const [rain,setRain]=useState(80);const [risk,setRisk]=useState<any>(null);
  const [layer,setLayer]=useState("All layers");const [mode,setMode]=useState<CadMode>("select");const [clipping,setClipping]=useState(false);
  const features=useHistory<CadFeature[]>([]);const [projectId,setProjectId]=useState<string|null>(()=>localStorage.getItem("geotect_project_id"));const [saveState,setSaveState]=useState("Unsaved");
- const [section,setSection]=useState<any>(null);const [correlations,setCorrelations]=useState<any>(null);const [selectedId,setSelectedId]=useState<string|null>(null);
+ const [section,setSection]=useState<any>(null);const [correlations,setCorrelations]=useState<any>(null);const [selectedId,setSelectedId]=useState<string|null>(null);const [adminOpen,setAdminOpen]=useState(false);
  const selectedFeature=useMemo(()=>features.value.find(f=>f.id===selectedId)||null,[features.value,selectedId]);
 
  useEffect(()=>{(async()=>{try{
@@ -47,7 +49,7 @@ function App(){
    <nav><a className="active"><Box/>3D CAD</a><a><Mountain/>Terrain / DEM</a><a><Layers3/>Geology</a><a><Waves/>Geophysics</a><a><Radio/>IoT Sensors</a><a><Database/>Data Twin</a><a><ShieldAlert/>Simulation & Risk</a></nav>
    <div className="status"><span className={status}/>{status.toUpperCase()} · {saveState}</div></aside>
   <main><header><div><small>GEOTECT / COMPUTATIONAL DIGITAL TWIN</small><h1>3D Geotechnical CAD Workspace</h1></div>
-   <div className="headerActions"><DemUpload api={API} onMesh={setDemMesh}/><select value={layer} onChange={e=>setLayer(e.target.value)}><option>All layers</option><option>Measured only</option><option>Geophysics</option><option>Infrastructure</option></select><button onClick={()=>setClipping(v=>!v)}>{clipping?"Disable":"Enable"} clip</button><button onClick={correlate}>Correlate BH</button><button onClick={run}>Run risk</button></div></header>
+   <div className="headerActions"><button className="adminLaunch" onClick={()=>setAdminOpen(true)}><ShieldCheck/>Admin</button><DemUpload api={API} onMesh={setDemMesh}/><select value={layer} onChange={e=>setLayer(e.target.value)}><option>All layers</option><option>Measured only</option><option>Geophysics</option><option>Infrastructure</option></select><button onClick={()=>setClipping(v=>!v)}>{clipping?"Disable":"Enable"} clip</button><button onClick={correlate}>Correlate BH</button><button onClick={run}>Run risk</button></div></header>
    <CadToolbar mode={mode} setMode={setMode} undo={features.undo} redo={features.redo} canUndo={features.canUndo} canRedo={features.canRedo} onSave={save}/>
    <section className="metrics"><Card label="CAD features" value={features.value.length} note="authored geometry"/><Card label="24h rainfall" value={`${rain} mm`} note="climate input"/><Card label="Factor of safety" value={risk?.factor_of_safety_screening??"—"} note="screening model"/><Card label="Risk state" value={risk?.risk_band?.toUpperCase()??"UNSET"} note={risk?`score ${risk.risk_score}`:"Run model"}/></section>
    <section className="workspace"><Workspace3D scene={scene} demMesh={demMesh} features={features.value} mode={mode} onAddFeature={addFeature} clipping={clipping} onSelectFeatureId={setSelectedId}/><div className="panel">
@@ -61,6 +63,7 @@ function App(){
    </div></section>
    <SectionView data={section}/>
    <ComputePanel api={API}/>
+   {adminOpen&&<AdminDashboard api={API} onClose={()=>setAdminOpen(false)}/>} 
   </main></div>
 }
 function Card({label,value,note}:{label:string,value:any,note:string}){return <div className="card"><span>{label}</span><b>{value}</b><small>{note}</small></div>}
