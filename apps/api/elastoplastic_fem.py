@@ -49,7 +49,10 @@ def solve_elastoplastic_2d(width_m:float,height_m:float,nx:int,ny:int,material:d
                           initial_displacement:list[list[float]]|None=None,initial_states:list[dict]|None=None,
                           mesh_nodes_m:list[list[float]]|None=None,mesh_triangles:list[list[int]]|None=None)->dict:
     """Incremental 2D small-strain elastoplastic triangular FEM."""
-    if mesh_nodes_m is not None and mesh_triangles is not None:\n        nodes=np.asarray(mesh_nodes_m,dtype=float);tris=np.asarray(mesh_triangles,dtype=int)\n    else:\n        nodes,tris=structured_tri_mesh(float(width_m),float(height_m),max(2,int(nx)),max(2,int(ny)))
+    if mesh_nodes_m is not None and mesh_triangles is not None:
+        nodes=np.asarray(mesh_nodes_m,dtype=float);tris=np.asarray(mesh_triangles,dtype=int)
+    else:
+        nodes,tris=structured_tri_mesh(float(width_m),float(height_m),max(2,int(nx)),max(2,int(ny)))
     model=make_material(material);inactive=set(inactive_elements or [])
     states=[model.initial_state() for _ in range(len(tris))]
     if initial_states:
